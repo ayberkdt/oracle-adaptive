@@ -49,6 +49,10 @@ kapanınca buradan silinir ve DECISIONS'a geçer.
 | **B2** | **Q13 kapalı değil:** kıyasın STM'i hangi gradyan derecesinde? | Düşük-perilun popülasyonu var ve önceki kampanya derece-120 gradyanın 31 km'de yetersiz olduğunu **ölçtü**. Ana kıyas için `N_G = N_ref`, sonra 8–14 yörüngelik tabakalı panelde `120→300→600` yakınsama kontrolü | Q13 |
 | **B3** | **`lunaris` commit SHA'sı pinlenmedi**; ayrıca özel (`_` önekli) `_compute_sh_acceleration_dual_numba` API'sine bağımlıyız | Yeniden üretilebilirlik; özel bir API sessizce değişirse kampanya iki kod yolundan gelir | D135 |
 | **B4** | **WP0 kabul kontrolü hiç koşulmadı** | Bütün kampanyanın "tek kod yolu" kuralı buna dayanıyor | WP0 |
+| **B5** ★ | **Bütçe `≤` mi `=` mi — sertifika geçerliliği.** Problem `Σ W_q N_q² ≤ B` diye tanımlı ama Algoritma 1 `W−B` üzerinde bisekt ediyordu ve FW uygulaması her yinelemede `|W(θ)−B|`'yi makine hassasiyetinde sıfıra zorluyordu. **`J` derecede monoton değil** — makalenin bütün fikri sadeleşme; daha yüksek derece bir çiftin bir terimini küçültüp `J`'yi **artırabilir**. Dolayısıyla `W* < B` gayet mümkün. LP'nin gerçek optimumu boşluk bırakıyorsa ve onu zorla yüzeye itersen **LMO'yu çözmemiş olursun** ve `L_FW ≤ J*` garantisi düşer. **Düzeltildi:** KKT (`λ≥0`, `B−W≥0`, `λ(B−W)=0`), `λ=0` önce sınanıyor; LMO `≤B` üzerinde çözülüyor ve LP'nin kendi optimallik sertifikası doğrulanıyor; eşleştirme "aynı gerçekleşen-iş **tavanı**" oldu ve her politikanın harcadığı iş hatasının yanında raporlanıyor. | **KAPANDI (D142)** |
+| **B6** | `build_decision_grid`'in eşleşme kontrolü `K_dec × M` yayın çarpımı kuruyordu: `N=300`'de 2.6×10⁸ karşılaştırma ve ~4 GB float geçici. Birim testte görünmez, gerçek yayda öldürücü. **Düzeltildi:** ikili arama, `O(K log M)` ve `O(K)` RAM. | **KAPANDI (D143)** |
+| **B7** | T3 ham `A_i` üzerinde iz/özdeğer/özyön ölçüyordu; `A_i` durum üzerinde **karışık birimli** bir kuadratik form, yani verdikt m/s ↔ km/s değişiminde değişebilir. **Düzeltildi:** ölçüm `Ã_i = Sᵀ A_i S` üzerinde (`tda.stm.nondimensionalise_form`, **eşlenik** dönüşüm — operatör benzerliği değil). | **KAPANDI (D144)** |
+| **B8** | T3a/T3b kanonik dallanma kuralı PREREG'de vardı, ROADMAP ve WP'de yoktu; `p=3` hiç tanımlı değildi. **Düzeltildi:** kural üç dosyada aynı — `p ≤ 2` **ve** medyan asal açı `< 15°` ⇒ `C-rank`; aksi hâlde tam durum; `p=3` açıkça tam duruma gidiyor ve `C-rank` gelecek-iş satırına yazılıyor. | **KAPANDI (D145)** |
 
 ### Yazılmamış kod
 
@@ -158,7 +162,7 @@ büyüklüğü her tabloda yazılır.
 | Kapı | Ölçüt | Geçilemezse |
 |---|---|---|
 | **G5** | Eleme kuralı **koşudan önce** yazılır; **tam iki** uçurulabilir aday M3'e geçer. Post-hoc aday seçimi yasak. | — (usul kuralı) |
-| **G5b** | En iyi adayın **öngörülen** yakalama oranı `f̂ ≥ 0.15`, **`B+` dahil** (prob ek yükü ~%12–19, D67) | 🟡 bandı: masada ödül var ama uçurulabilir kısmı yok. M3'e ~670 yay harcanmaz; makale kıyas + bilgi-sınırı biçiminde yazılır |
+| **G5b** | En iyi adayın **öngörülen** yakalama oranı `f̂ ≥ 0.15`, **`B+` dahil** (prob ek yükü **dereceyle doğrusal**, D141: vekil yayda `N=120`→%8.5, `N=300`→%21, `N=600`→%42) | 🟡 bandı: masada ödül var ama uçurulabilir kısmı yok. M3'e ~670 yay harcanmaz; makale kıyas + bilgi-sınırı biçiminde yazılır |
 
 `f̂ = 0.15` eşiği, H3'ün hedefi olan `f ≥ 0.33`'ün altındadır — bilerek. Amaç
 umut vaat eden bir adayı erken elememek, yalnızca hiç yakalayamayan bir aday
@@ -191,11 +195,14 @@ ve M1/M2 kapılarından gelir; hiçbiri ek yay istemez.
 | Gözlem | Eşik | Ne söyler | Mimari |
 |---|---|---|---|
 | G1 düşer | `ρ̂(R-int,A-sign) < 1.5` | masada ödül yok | **dur** — makale tahsis-kıyası + negatif sonuç |
-| **T3** etkin rank | `p ≤ 2` (izin %95'i) | sadeleşme durumu skaler | **`C-rank1`** — `p` skaler, çevrimiçi güncellenir; IFBDA yerine |
-| **T3** | `p ≥ 4` | tam 6×6 eşleşme gerekli | `C-plan`/IFBDA doğru tasarım |
+| **T3a+T3b** birlikte | `p ≤ 2` **ve** medyan asal açı `< 15°` | sadeleşme durumu `p` skaler **ve** altuzay yay boyunca tutarlı | **`C-rank`** — `p` skaler, çevrimiçi güncellenir; IFBDA yerine |
+| **T3a** geçer, **T3b** düşer | `p ≤ 2` ama açı `≥ 15°` | rank düşük ama baskın yön dönüyor; 1-B bilgi her epokta başka yönde | **tam durum** — `C-plan`/IFBDA |
+| **T3a** | `p = 3` | ara bölge; indirgeme var ama zayıf | **tam durum**, `C-rank` gelecek-iş satırına yazılır |
+| **T3a** | `p ≥ 4` | tam 6×6 eşleşme gerekli | `C-plan`/IFBDA doğru tasarım |
+| **T3** ölçüm tabanı | `Ã_i = Sᵀ A_i S` | `A_i` karışık birimli bir kuadratik form; ham iz/özdeğer/özyön birim sistemine bağlı | boyutsuzlaştırılmış formda ölçülür, ham `A_i`'de değil |
 | **T4** ufuk dizi | `H* ≤ 1 devir` | eşleşme kısa menzilli | kısa-ufuklu MPC ucuz; ama `C-plan` da yeter |
 | **T4** | `H*` yayın yarısını aşar | eşleşme yay-boyu | çevrimdışı plan zorunlu; MPC pahalı |
-| **T5** `c` duyarlılığı | profil uzaklığı > G3 eşiği | dondurulmuş `c` yetmez | çevrimiçi eşdurum: adjoint/MPC veya `C-rank1` |
+| **T5** `c` duyarlılığı | profil uzaklığı > G3 eşiği | dondurulmuş `c` yetmez | çevrimiçi eşdurum: adjoint/MPC veya `C-rank` |
 | **T6a** düzgün-durum uyumu | `≥ 0.60` | kazanç doku değil **geometri** | prob gereksiz; ucuz durum-geri-besleme politikası |
 | **T6a / T6b** | `T6a ≤ 0.25`, T6b yükseliyor | kazanç gerçekten dokuda | prob veya vektör-vekil; **T7 Pareto'su** seçer |
 | **T1** boşluk ayrışması | iniş terimi baskın | çözücü zayıf | `S-round`/MIQP; kanonik çözücü değişebilir |

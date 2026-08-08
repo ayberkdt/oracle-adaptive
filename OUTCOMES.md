@@ -131,7 +131,7 @@ Sonuç değil, hata. Çoğu önceki kampanyada bilfiil yaşandı. Kontrolleri
 | **Sadeleşmeye aşırı uyum** | Tek referans yayda muhteşem, faz kaydırınca yok | Faz MC; farklı başlangıç epoku |
 | **Ayrıklaştırma artefaktı** ★ | Kazanç `Δt_acc` ile kayboluyor; 120 s'de işaretli integral aliasing | **WP4** — M1'de, geç aşamada değil |
 | **Tutarlılık yanılsaması** ★ | Pilot yay planı gerçek yayda geçersiz ama tabloda öyle görünmüyor | **WP6** — `T_coh` ölçülür; `v̂` uçuş anında probe edilir |
-| **Prob maliyetinin eksik sayılması** ★★★★ | Ek yük `2k/N` ≈ %5 sanılıyor; gerçekte ileri prob yeni bir konumda tam sentez gerektiriyor, gerçek yük yay integrali `[∫dt/τ_corr]/N_RHS` ≈ %12–19 (D67) | **D50** — maliyet ölçülür, modellenmez; `κ_eff(n_probe)` eğrisi ve `C-lite` uç noktası WP5'te |
+| **Prob maliyetinin eksik sayılması** ★★★★ | Ek yük `2k/N` ≈ %5 sanılıyor; gerçekte ileri prob yeni bir konumda tam sentez gerektiriyor, gerçek yük yay integrali `[∫dt/τ_corr]/N_RHS` ve **dereceyle doğrusal** (D141): %8.5 / %21 / %42 @ N=120/300/600 | **D50** — maliyet ölçülür, modellenmez; `κ_eff(n_probe)` eğrisi ve `C-lite` uç noktası WP5'te |
 | **Bayat plan hizası** ★★★★ | Pilot yayın ~100 s zaman kayması perilun geçişi mertebesinde; zaman-indeksli plan `c` ve `K_i`'yi tam da baskın oldukları yerde yanlış epoklara koyuyor | **D52** — plan faz-indeksli; WP6 kararlılığı faz-indeksli ölçüyor |
 | **Eleyici döngüselliği** ★★★★ | `A-sign` `J`'yi minimize ediyor, eleyici `J`'yi hesaplıyor; önceki 100/100 kalibrasyon optimize edilmemiş politikalar içindi | **D54** — G6 taşıyıcı kapı hâline geldi; başarısızlığı D41 kaçışını tetikler |
 | **Güç yasası kuyruğu** ★★★★ | `γ` uydurulmuş Kaula yasasından; ama ay spektrumu tek güç yasası değil (`p_spec` 2.13 vs `p_fit` 1.76) | **D53** — `γ` gerçek `P_n` spektrumundan (1D tablo, uçurulabilir) |
@@ -166,7 +166,7 @@ Sonuç değil, hata. Çoğu önceki kampanyada bilfiil yaşandı. Kontrolleri
 | R11 | Aday sayısı çokluğu (forking paths) | Sahte kazanan | Ön-tescil + sabit eleme + post-hoc etiketi |
 | R12 | Eşzamanlı koşular birbirini aç bırakır | Duvar saati patlar | İşçi sayısı kısılır, BelowNormal öncelik |
 | R13 | Figür üretimi eski veriyle üzerine yazar | Bayat şekil | Yalnızca `make_figures_oa*.py` |
-| R15 | **Prob ek yükü kazancı yer** (~%12–19, artı pilot yay %8) | Net kazanç sıfır veya negatif | `κ_eff(n_probe)` eğrisi; `C-lite` varyantı; ek yük `B_tot`'tan düşülür (NOTATION §2) |
+| R15 | **Prob ek yükü kazancı yer** — dereceyle doğrusal, `N=600`'de **%42**'ye çıkıyor (D141), artı pilot yay %8 | Net kazanç sıfır veya negatif | `κ_eff(n_probe)` eğrisi; `C-lite` varyantı; ek yük `B_tot`'tan düşülür (NOTATION §2) |
 | R16 | **Prob perilunda en pahalı, tam da en gerekli olduğu yerde** (`τ_corr` orada en kısa) | Yöntem kendi tatlı noktasında en pahalı | Ölçülür; gerekirse prob yalnızca perilun penceresinde açılır, apolunda kapalı — ayrı varyant olarak sınanır |
 | R17 | Eleyici döngüselliği (D54) | M2'nin elemesi yanıltıcı olabilir | G6 taşıyıcı; kaçış D41 |
 | R14 | `A-sign` bir *referans-yay* optimumu çıkar | Tavan iddiası zayıflar | WP17 sabit nokta; sonuç öyleyse öyle adlandırılır |

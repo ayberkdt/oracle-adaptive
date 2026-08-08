@@ -38,6 +38,7 @@ REQUIRED = {
     "M4 yay (tablo)":      {"ROADMAP.md"},
     "M5 yay (tablo)":      {"ROADMAP.md"},
     "M6 yay (tablo)":      {"ROADMAP.md"},
+    "prob ek yuku (N=120/300/600)": {"NOTATION.md", "OUTCOMES.md"},
     # WP21 mimari dallanma esikleri (D116): tescil, yol haritasi ve
     # manuskript ayni sayiyi tasimak zorunda.
     "T6a esigi (geometri)": {"PREREG.md", "ROADMAP.md", "WP.md",
@@ -63,7 +64,11 @@ PROBES = {
     "M4 yay (tablo)":      (STAGE % 4, "576"),
     "M5 yay (tablo)":      (STAGE % 5, "3060"),
     "M6 yay (tablo)":      (STAGE % 6, "1730"),
-    "prob ek yuku":        (r"~?%(12)" + NDASH + r"(19)", ("12", "19")),
+    # D141: tek bir yuzde degil, dereceye bagli uclu. Uc sayi da uc
+    # dosyada ayni olmali; "%12-19" hala gecerli ama yalniz
+    # dusuk-orta bant icin ve o ibareyle birlikte yaziliyor.
+    "prob ek yuku (N=120/300/600)":
+        (r"%(8\.5) ?/ ?%?(21) ?/ ?%?(42)", ("8.5", "21", "42")),
     # WP21 / D116
     # Anchor'lar dar: ROADMAP'teki alt esik (0.25) ayni satirda, onu YAKALAMAMALI.
     "T6a esigi (geometri)": (r"(?:≥ ?|more than )\$?(0\.60)", "0.60"),

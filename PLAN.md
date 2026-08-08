@@ -85,7 +85,9 @@ ağırlığının `j`'den **bağımsız** olmasını gerektirir:
   **orta noktalarında**, dış integral hücre **kenarlarında** örnekleniyor.
   İç ağırlık tam hücre genişliği → `j`'den bağımsız → yapı **aynen** korunur;
   kural orta nokta → **ikinci mertebe**; ve `S_j` tam olarak `j+1`. kenara
-  kadarki iç integraldir, ona bir yaklaşım değil. Dış integralde önek toplamı
+  kadarki iç integralin **orta-nokta ayrıklaştırmasının tam önek toplamıdır**.
+  (Sürekli integrale hâlâ bir yaklaşımdır — ikinci mertebeden; "tam" olan,
+  ayrıklaştırmanın önek toplamı olmasıdır.) Dış integralde önek toplamı
   olmadığı için orada yamuk serbest.
 
 Yani yukarıdaki formüllerde `t_i` **hücre orta noktası**, `t_j` **hücre
@@ -353,7 +355,7 @@ ek yük = [ ∫₀^T dt/τ_corr(t) ] / N_RHS,toplam = [ ∫ N(t)v(t)/(πr(t)) dt
 yüksek — iki etki zıt yönde. Arşiv yaylarından: dairesele yakın **~%19**,
 perilun 50/apolun 1000 **~%14**, perilun 30/apolun 2500 **~%12**. Eksantrik
 yörüngeler uzun apolun kolları neredeyse hiç prob istemediği için **daha
-ucuz**. Yani **~%12–19**; taslağın önceki sürümündeki "%21–53" yerel `τ_corr`
+ucuz**. Yani düşük-orta derece bandında **~%12–19**; taslağın önceki sürümündeki "%21–53" yerel `τ_corr`
 ile küresel `r_RHS`'yi çarpan bir kategori hatasıydı. Prob yine de `B+`'ın
 baskın kalemi.
 

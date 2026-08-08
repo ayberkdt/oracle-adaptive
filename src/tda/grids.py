@@ -241,6 +241,14 @@ class AccumulationGrid:
     outer_weights:
         :math:`\\omega_j\\ge0` on ``edges``, shape ``(M+1,)``, summing to
         ``T``.
+    density_mass:
+        :math:`\\alpha_i`, the share of node density each cell was given,
+        shape ``(M,)``; equal within a decision interval by construction.
+        Carried because it makes the step bound exact rather than an argument
+        about rounding: with the density clamped to
+        :math:`[1/\\Delta t_{\\max},\\,1/\\Delta t_{\\min}]`, every cell
+        satisfies :math:`\\alpha_i\\Delta t_{\\min}\\le\\Delta t_i\\le
+        \\alpha_i\\Delta t_{\\max}` directly.
 
     Notes
     -----
@@ -254,6 +262,7 @@ class AccumulationGrid:
     nodes: Arr
     widths: Arr
     outer_weights: Arr
+    density_mass: Arr
 
     def __len__(self) -> int:
         """Number of cells, :math:`M`."""
@@ -416,13 +425,23 @@ def build_accumulation_grid(sample_t: Arr, sample_radius: Arr,
     what carries the bounds through; clipping widths afterwards would move the
     edges and leave the neighbours outside the bound it was applied for.
 
-    **The bound delivered** is not the bound requested but
-    ``dt_acc_min_s * m/(m+0.5) <= width <= dt_acc_max_s * m/(m-0.5)`` for an
-    interval holding ``m`` cells, because the density demand is rounded to an
-    integer count and the widths are scaled by the rounding.  At twenty-four
-    cells that is two per cent.  No integer count avoids it -- rounding the
-    other way overshoots the upper bound instead -- so it is stated rather
-    than papered over.
+    **The bound delivered** follows from the clamp directly and needs no
+    argument about rounding.  A cell carrying density mass ``alpha_i``
+    spans a region where the clamped density lies between
+    ``1/dt_acc_max_s`` and ``1/dt_acc_min_s``, so
+
+    .. math::
+        \\alpha_i\\, \\Delta t_{\\min}
+        \\;\\le\\; \\Delta t_i \\;\\le\\;
+        \\alpha_i\\, \\Delta t_{\\max} ,
+
+    exactly, with ``alpha_i`` reported as
+    :attr:`AccumulationGrid.density_mass`.  Since ``alpha_i = D_q/m_q``
+    and ``m_q = round(D_q)``, it sits within ``1 +- 1/(2 m_q)`` of unity
+    where the clip does not bind, which is by how much the *requested*
+    bounds can be missed -- a couple of per cent at twenty-four cells.
+    The exact statement is the displayed one; the rounding estimate only
+    says how large the miss can be.
 
     Parameters
     ----------
@@ -491,6 +510,7 @@ def build_accumulation_grid(sample_t: Arr, sample_radius: Arr,
 
     at_edges = np.interp(decision_edges, sample_t, cumulative)
     pieces = []
+    masses = []
     for q in range(decision_edges.size - 1):
         lo = float(decision_edges[q])
         length = float(decision_edges[q + 1]) - lo
@@ -501,6 +521,7 @@ def build_accumulation_grid(sample_t: Arr, sample_radius: Arr,
         local = np.linspace(at_edges[q], at_edges[q + 1], count + 1)
         inner = np.interp(local[1:-1], cumulative, sample_t)
         pieces.append(np.concatenate([[lo], inner]))
+        masses.append(np.full(count, demand / count))
     edges = np.concatenate([*pieces, [float(decision_edges[-1])]])
 
     widths = np.diff(edges)
@@ -515,6 +536,7 @@ def build_accumulation_grid(sample_t: Arr, sample_radius: Arr,
         nodes=0.5 * (edges[:-1] + edges[1:]),
         widths=widths,
         outer_weights=trapezoid_weights(edges),
+        density_mass=np.concatenate(masses),
     )
 
 
@@ -552,9 +574,17 @@ def build_decision_grid(grid: AccumulationGrid,
     # cells small enough to populate every finer interval and would pair
     # silently.  Requiring each boundary to be an edge catches both, and is
     # the invariant the construction actually guarantees.
-    missing = ~np.isclose(
-        decision_edges[:, None], grid.edges[None, :], rtol=0.0, atol=1e-9
-    ).any(axis=1)
+    # By binary search, not by broadcasting.  Both arrays are sorted, so each
+    # boundary has at most two candidate edges.  The Cartesian product would
+    # be K_dec by M, which at 5041 decision intervals and 51k cells is 2.6e8
+    # comparisons and several gigabytes of float temporaries before the
+    # tolerance is even applied -- fine in a unit test, fatal on a real arc.
+    pos = np.searchsorted(grid.edges, decision_edges)
+    last = grid.edges.size - 1
+    left = grid.edges[np.clip(pos - 1, 0, last)]
+    right = grid.edges[np.clip(pos, 0, last)]
+    missing = np.minimum(np.abs(decision_edges - left),
+                         np.abs(decision_edges - right)) > 1e-9
     if missing.any():
         raise ValueError(
             f"{int(missing.sum())} decision boundary(ies) are not accumulation "

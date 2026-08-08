@@ -48,7 +48,7 @@ fonksiyonelinden doğrudan çıktığı için ona güveniyoruz; `C-plan` ise **i
 yorumlanabilir denemedir**, en iyi uçurulabilir çözüm olduğu iddia edilmiyor.
 WP21'in yedi testi (T1–T7, hepsi **0 yay**) hangi denetleyici ailesinin
 gerektiğini M3'ün ~670 yayı harcanmadan **ölçer**: alıcı-ufuk MPC mi, düşük
-ranklı `C-rank1` mi, vektör-vekil mi, yoksa `C-plan` mı. Tablo
+ranklı `C-rank` mi, vektör-vekil mi, yoksa `C-plan` mı. Tablo
 [ROADMAP.md](ROADMAP.md#m2b) M3'ten önce okunur ve seçilen aile yazılı
 olarak ilan edilir.
 
@@ -84,7 +84,7 @@ M1'e alındı (D8, G3).
 | 4 | [OUTCOMES.md](OUTCOMES.md) | Sonuç bantları, sahte-iyi artefakt tablosu, risk sicili, erken uyarı göstergeleri |
 | 5 | [NOTATION.md](NOTATION.md) | **Dondurulmuş adlar ve tanımlar.** Politika kodları, maliyet düzeyleri, ızgaralar, terminoloji |
 | 6 | [PREREG.md](PREREG.md) | Üç ön-tescilin tam metin taslağı (OA-01/02/03) + WP21 dallanma eşikleri |
-| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D141** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
+| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D147** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
 | 8 | [paper/](paper) | LaTeX manuskript taslağı — `main.tex`, `chapters/`, `references.bib` |
 | 9 | [src/tda/](src/tda) | Kampanya kodu (aşağıdaki katman tablosu); [tests/](tests) altında birim testleri |
 

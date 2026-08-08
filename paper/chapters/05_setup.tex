@@ -99,13 +99,20 @@ $K_{\mathrm{ref}}$ the comparator's right-hand-side call count on the same arc;
 dividing $B_2$ by $N_{\mathrm{crit}}^2$ alone would fold the call count into
 the same number and is not done.
 
-\paragraph{Matching convention.} Comparisons are matched on total budget, and
-the controller's overhead comes out of its own allocation:
+\paragraph{Matching convention.} Comparisons are matched on a common work
+\emph{ceiling}, and the controller's overhead comes out of its own allocation:
 
 \begin{equation}
-  B_2 + B_+ \;=\; B_{\mathrm{tot}} \;=\; B_{2,\mathrm{F}} ,
+  B_2 + B_+ \;\le\; B_{\mathrm{tot}} \;=\; B_{2,\mathrm{F}} ,
   \label{eq:matching}
 \end{equation}
+
+with the inequality meant literally. Section~\ref{sec:algorithm-descent}
+explains why an allocation can be better for spending less --- the objective
+is not monotone in degree --- so the realized $B_2+B_+$ is reported beside
+every error rather than assumed equal to the ceiling. A policy that wins under
+a lower spend has won by more; one that wins only by saturating the ceiling is
+reported as such.
 
 with $B_+=0$ for every policy that is not a controller. No fictitious overhead
 is added to the fixed comparator, so a controller that must plan and probe has
@@ -130,10 +137,15 @@ That calibration costs propagations, and the cost is a consequence of the
 previous paper's own result rather than an inefficiency: a schedule's realized
 work is not known until it is flown, and calibrating on nominal per-call work
 misses it by a median \ph{pct}. Each candidate is therefore propagated,
-measured, its multiplier adjusted, and propagated again until
-$\lvert B_2+B_+-B_{\mathrm{tot}}\rvert/B_{\mathrm{tot}}\le\ph{pct}$, which
-takes \ph{value} propagations per candidate in practice. Section~\ref{sec:campaign}
-reports the achieved match alongside every verdict.
+measured, its multiplier adjusted, and propagated again until it sits under
+the ceiling without slack it does not want:
+$B_2+B_+\le B_{\mathrm{tot}}$, and either
+$(B_{\mathrm{tot}}-B_2-B_+)/B_{\mathrm{tot}}\le\ph{pct}$ or the schedule is
+the unconstrained optimum of its own criterion. The second branch is what
+keeps the calibration from forcing work onto a policy whose objective would
+worsen for taking it. That takes \ph{value} propagations per candidate in
+practice, and Section~\ref{sec:campaign} reports the achieved spend alongside
+every verdict.
 
 The propagated grid is $\beta\in\{0.50,0.75,1.00,1.25,1.50\}$;
 $\beta=3$ is evaluated at benchmark level only, because at that budget the

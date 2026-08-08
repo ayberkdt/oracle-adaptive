@@ -193,18 +193,19 @@ def test_step_bounds_hold_to_the_integer_rounding() -> None:
     rather than an allowance made in advance.
     """
     cfg = GridConfig(samples_per_tau=2.0, dt_acc_min_s=5.0, dt_acc_max_s=60.0)
-    grid, dec, _ = _build(cfg)
+    grid, _, _ = _build(cfg)
 
-    for q in range(len(dec)):
-        cells = dec.cells_in(q)
-        m = cells.size
-        w = grid.widths[cells]
-        assert w.min() >= cfg.dt_acc_min_s * m / (m + 0.5) - 1e-9, f"interval {q}"
-        assert w.max() <= cfg.dt_acc_max_s * m / max(m - 0.5, 0.5) + 1e-9, q
+    # The exact bound: a cell carrying density mass alpha over a region where
+    # the clamped density lies in [1/dt_max, 1/dt_min] has its width between
+    # alpha*dt_min and alpha*dt_max.  No rounding argument enters.
+    alpha = grid.density_mass
+    assert np.all(grid.widths >= alpha * cfg.dt_acc_min_s - 1e-9)
+    assert np.all(grid.widths <= alpha * cfg.dt_acc_max_s + 1e-9)
 
     # The clamp must actually bind somewhere, or the test proves nothing.
     assert grid.widths.min() < 1.5 * cfg.dt_acc_min_s
-    # ... and the miss must stay small, or the rounding argument is too weak.
+    # And the *requested* bound is missed only by the integer rounding, which
+    # is 1/(2m) per interval -- a couple of per cent, not a factor.
     assert grid.widths.min() > 0.95 * cfg.dt_acc_min_s
 
 
@@ -348,3 +349,30 @@ def test_matched_grids_pair_without_complaint() -> None:
     """The guard must not fire on the pairing the construction produces."""
     grid, dec, edges = _build(GridConfig())
     assert np.allclose(dec.edges, edges, rtol=0.0, atol=0.0)
+
+
+def test_density_mass_is_uniform_within_an_interval() -> None:
+    """Equidistribution splits an interval's demand into equal shares.
+
+    The property the exact step bound rests on: if the shares were unequal,
+    ``alpha_i`` would not characterise the cell and the bound would have to
+    fall back on the rounding argument.
+    """
+    grid, dec, _ = _build(GridConfig())
+    for q in range(len(dec)):
+        share = grid.density_mass[dec.cells_in(q)]
+        assert np.allclose(share, share[0], rtol=1e-12, atol=0.0), q
+
+
+def test_density_mass_totals_the_integrated_density() -> None:
+    """The shares must add up to what the density actually demanded."""
+    cfg = GridConfig(samples_per_tau=2.0, dt_acc_min_s=0.5, dt_acc_max_s=600.0)
+    grid, _, _ = _build(cfg)
+
+    t, r, v = _eccentric_sample()
+    density = np.clip(cfg.samples_per_tau / correlation_time(r, v, 300),
+                      1.0 / cfg.dt_acc_max_s, 1.0 / cfg.dt_acc_min_s)
+    total = np.trapezoid(density, t)
+    # Per-interval rounding moves the total by at most half a cell per
+    # interval, so the tolerance is the interval count and not a fixed number.
+    assert abs(grid.density_mass.sum() - total) < 0.5 * DURATION / cfg.dt_dec_s

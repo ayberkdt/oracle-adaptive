@@ -483,7 +483,7 @@ Arşivlenmiş referans yaylardan hesaplanan yay-integrali değerler:
 | Perilun 50 / apolun 1000 km | N 200→40 | **~%14** |
 | Perilun 30 / apolun 2500 km | N 300→20 | **~%12** |
 
-Yani **~%12–19**, önceki taslakta yazdığım "%21–53" değil. `r_RHS(t)`'nin
+Yani düşük-orta derece bandında **~%12–19**, önceki taslakta yazdığım "%21–53" değil. **Dereceye bağlı (D141).** Bu aralık, ölçüldüğü politika derecesi yazılmadan taşınıyordu. `n_probe = M/n_s` olduğu için ek yük `N` ile doğrusal: vekil yayda `N=120`→%8.5, `N=300`→%21, `N=600`→%42. Aşağıdaki sayı düşük-orta derece bandına aittir ve **tek sayı olarak raporlanmayacaktır**; WP5/WP16 derece bandı başına ölçer. `r_RHS(t)`'nin
 perilunda yükselmesi integrale henüz katılmadı, dolayısıyla bu değerler hâlâ
 üst taraftan sapıyor. Kesin sayı WP5/WP16'da ölçülür; formül yukarıdaki.
 
@@ -500,7 +500,7 @@ fonksiyonu. Makale bir **maliyet–isabet ödünleşim eğrisi** raporlar.
 
 | Varyant | Prob | Maliyet | Yön bilgisi |
 |---|---|---|---|
-| `C-plan` | `n_probe` ayrı ileri nokta | ~%12–19 (yay integrali) | aralığı kapsar |
+| `C-plan` | `n_probe` ayrı ileri nokta | yay integrali, **dereceye bağlı** (D141): %8.5 / %21 / %42 @ N=120/300/600 | aralığı kapsar |
 | `C-lite` | aralığın **ilk RHS çağrısı** yükseltilmiş derecede (eş-konumlu) | ~%2 | yalnız aralık başı, `τ_corr` kadar geçerli |
 
 `C-lite` eş-konumlu olduğu için `2k/N` ona **gerçekten** uygulanır.

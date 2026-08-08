@@ -172,7 +172,7 @@ yapılamaz.
 | **T1** | `J_desc − J*` ve `J* − L_FW` (kaba kuvvet/MIQP küresel optimumla) | iniş terimi toplamın **yarısından** fazlaysa çözücü değiştirilir |
 | **T2** | `S-round` çizelgesinin `J`'si | çok-başlangıçlı inişten iyiyse **kanonik çözücü değişir**, iniş kontrole düşer |
 | **T3a** | `A_i` izinin %95'i için gereken özyön sayısı `p` | `p ≤ 2` **gerekli koşul**, tek başına yeterli değil |
-| **T3b** | baskın altuzayın zaman tutarlılığı: ardışık epoklar arasında asal açı `∠(U_p(t_i), U_p(t_{i+1}))` | medyan asal açı, bir korelasyon zamanı boyunca birikmiş hâliyle **< 15°** ise altuzay tutarlı; `C-rank1` dalı **ancak T3a ve T3b birlikte** geçerse açılır |
+| **T3b** | baskın altuzayın zaman tutarlılığı: ardışık epoklar arasında asal açı `∠(U_p(t_i), U_p(t_{i+1}))` | medyan asal açı, bir korelasyon zamanı boyunca birikmiş hâliyle **< 15°** ise altuzay tutarlı; `C-rank` dalı **ancak T3a ve T3b birlikte** geçerse açılır |
 | **T4** | `ρ̂(H)/ρ̂(T)`, diz noktası `H*` | `≥ 0.90`'a ulaşan en küçük `H` = `H*`; `H* ≤ 1 devir` → kısa ufuk yeter |
 | **T5** | pilot–referans `c` pertürbasyonu altında çizelge profil uzaklığı | G3 eşiğinin üstündeyse çevrimiçi eşdurum gerekir |
 | **T6a** | düzgün-durum politikasının koruduğu kazanç kesri (A'da uydur, **B'de ölç**) | `≥ 0.60` → prob gereksiz; `≤ 0.25` → kazanç dokuda |

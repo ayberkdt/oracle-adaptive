@@ -40,8 +40,8 @@ and a sensitivity-weighted allocation.
 \Require tabulated $\mathbf u_i(N)$ for $i=1..M$, $N\in\mathcal{N}$; suffix
   blocks $\mathbf A_i$; grouping $g$; budget $B$; start set $\mathcal{S}$
   (Table~\ref{tab:starts})
-\State $\lambda \gets$ bracket from the separable solution
-\Repeat \Comment{outer: bisection on the budget}
+\State $\lambda \gets 0$ \Comment{the ceiling may not bind; test that first}
+\Repeat \Comment{outer: complementary slackness on the budget}
   \For{each start $s\in\mathcal{S}$} \Comment{multi-start, \emph{not} one start}
     \State $N \gets s$
     \Repeat \Comment{inner: sweeps}
@@ -57,12 +57,34 @@ and a sensitivity-weighted allocation.
   \EndFor
   \State $N^\star(\lambda) \gets \argmin_s F_\lambda^{(s)}$
     \Comment{by the \emph{penalized} objective, not by $J$}
-  \State $\lambda \gets$ bisect on $\sum_q W_q N_q^{\star2} - B$
-\Until{budget met to tolerance \ph{value}}
+  \If{$\lambda=0$ \textbf{and} $W(N^\star)\le B$}
+    \State \textbf{stop} \Comment{$\lambda^\star=0$; the ceiling does not bind}
+  \EndIf
+  \State $\lambda \gets$ bisect on $W(N^\star)-B$
+\Until{$W(N^\star)\le B$ and $\lambda\,(B-W(N^\star))<\ph{value}$}
 \State \Return $N^\star$, $J(N^\star)$, and the spread of $J$ across
   $\mathcal{S}$
 \end{algorithmic}
 \end{algorithm}
+
+\paragraph{The budget is a ceiling, and the optimum need not reach it.}
+Problem~\eqref{eq:allocation} constrains $\sum_qW_qN_q^2\le B$, and the
+Karush--Kuhn--Tucker conditions for it are $\lambda\ge0$, $B-W\ge0$ and
+$\lambda\,(B-W)=0$: a solution that leaves work unspent is admissible whenever
+$\lambda^\star=0$. That is not a corner case to be tidied away. The objective
+is \emph{not} monotone in degree --- the whole content of the signed
+formulation is that contributions cancel, so raising a degree can shrink one
+term of a cancelling pair and \emph{increase} $J$. An allocator that spends
+its last unit of work can therefore be worse than one that stops short, and
+Algorithm~\ref{alg:descent} tests $\lambda=0$ before it bisects.
+
+Two consequences run through the rest of the paper. Comparisons are matched on
+a common realized-work \emph{ceiling} rather than on equal spend, and each
+policy's realized work is reported beside its error, so that a policy winning
+while spending less is read as winning by more. And if the benchmark
+systematically declines work at high budgets, that is a statement about the
+physics --- additional fidelity destroying cancellation --- to be reported
+rather than hidden by writing the constraint as an equality.
 
 \paragraph{Which start wins is decided by the penalized objective.} At a fixed
 $\lambda$ the starts land in different basins, and those basins need not spend
@@ -232,9 +254,18 @@ a brute-force optimum on short instances either way. The certificate is one of
 the paper's stronger claims; a dull verified solver is worth more here than a
 clever fragile one.
 
-The implementation asserts $\lvert\sum_q W_q\sum_N\theta_{qN}N^2 - B\rvert$ at
-machine precision on every iteration; a run in which the assertion fails
-produces no certificate.
+The subproblem is solved over the feasible set as written,
+$\sum_qW_q\sum_N\theta_{qN}N^2\le B$, and \emph{not} over its boundary. That
+distinction is about validity, not tidiness. If the programme's optimum leaves
+slack and the implementation pushes it onto the budget surface regardless,
+$\mathbf s$ stops being a minimizer of Eq.~\eqref{eq:fw-subproblem} and the
+left-hand side of Eq.~\eqref{eq:certificate} stops being a lower bound. The
+slack case is not hypothetical here: $\langle\nabla_qJ,\mathbf u_q(N)\rangle$
+is no more monotone in $N$ than $J$ is, for the same cancellation reason.
+What the implementation asserts on every iteration is therefore primal
+feasibility, dual feasibility and a duality gap at machine precision --- the
+solver's own optimality certificate --- and a run in which any of the three
+fails produces no bound.
 
 \paragraph{What the certificate does and does not license.} It bounds the
 distance to the best schedule \emph{of this problem}: the first-order

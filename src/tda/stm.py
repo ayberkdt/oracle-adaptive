@@ -45,6 +45,7 @@ __all__ = [
     "SYMPLECTIC_J",
     "condition_number",
     "inverse_residual",
+    "nondimensionalise_form",
     "position_rows",
     "symplectic_defect",
     "symplectic_inverse",
@@ -300,3 +301,62 @@ def condition_number(phi: Arr, length_scale: float,
     """
     tilde = _nondimensionalise(_check_square(phi), length_scale, time_scale)
     return np.linalg.cond(tilde)
+
+
+def nondimensionalise_form(a: Arr, length_scale: float,
+                           time_scale: float) -> Arr:
+    """Scale a quadratic form on the state: ``S.T @ A @ S``.
+
+    Distinct from the similarity transform used on an *operator*.  A quadratic
+    form transforms congruently: with :math:`\\mathbf x=\\mathbf S
+    \\tilde{\\mathbf x}`, the form :math:`\\mathbf x^\\top\\mathbf A\\mathbf x`
+    becomes :math:`\\tilde{\\mathbf x}^\\top(\\mathbf S^\\top\\mathbf A
+    \\mathbf S)\\tilde{\\mathbf x}`.  Reaching for the operator form here would
+    be a silent unit error.
+
+    Why it is needed
+    ----------------
+    The suffix blocks :math:`\\mathbf A_i` that generate the coupling are
+    quadratic forms on ``(r, v)``, so their blocks carry different units and
+    their trace, eigenvalues and eigenvectors all depend on whether velocity
+    is written in metres or kilometres per second.  Any claim about the
+    *effective rank* of :math:`\\mathbf A_i` -- which is what decides whether
+    a reduced cancellation state exists -- must be made on the scaled form, or
+    it is a claim about the unit system.
+
+    Parameters
+    ----------
+    a:
+        Shape ``(6, 6)`` or ``(M, 6, 6)``, symmetric.
+    length_scale, time_scale:
+        As for :func:`symplectic_defect`.
+
+    Returns
+    -------
+    ndarray
+        Same shape as ``a``.
+
+    Raises
+    ------
+    ValueError
+        If the trailing shape is not ``(6, 6)``, or a scale is not positive.
+
+    Examples
+    --------
+    Scaling the identity does not give the identity: the transform is
+    congruent, not similar.
+
+    >>> import numpy as np
+    >>> out = nondimensionalise_form(np.eye(6), 2.0, 1.0)
+    >>> bool(np.allclose(np.diag(out), 4.0))
+    True
+    """
+    a = _check_square(a)
+    if length_scale <= 0.0 or time_scale <= 0.0:
+        raise ValueError(
+            f"scales must be positive, got L={length_scale}, T={time_scale}")
+    scale = np.concatenate([
+        np.full(3, length_scale),
+        np.full(3, length_scale / time_scale),
+    ])
+    return a * scale[:, None] * scale[None, :]

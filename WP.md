@@ -179,8 +179,13 @@ Sütunlar: **Soru** (ne cevaplıyor) · **Girdi** · **Çıktı** · **Maliyet**
   için `P_{n,m}` rekürsiyonu sıfırdan `N+k`'ya koşmak zorunda → **her prob
   noktası ≈ bir tam sentez.** Maliyet tabanı
   `n_probe/n_RHS = 1/(τ_corr · r_RHS)`, **`Δt_dec`'ten bağımsız**. Ama bütçeye
-  giren sayı **yay integralidir** (D67): `[∫dt/τ_corr]/N_RHS` → arşiv
-  yaylarında **~%12–19**. Yerel `τ_corr` ile küresel `r_RHS` çarpılmaz.
+  giren sayı **yay integralidir** (D67): `[∫dt/τ_corr]/N_RHS`. Yerel `τ_corr`
+  ile küresel `r_RHS` çarpılmaz.
+  **Bu integral, ızgara hücre sayısıyla aynıdır (D141):** `n_probe = M/n_s`.
+  Dolayısıyla dereceyle **doğrusal** ve tek bir yüzde değil — vekil eksantrik
+  yayda `N_RHS≈121k` ile `N=120`→**%8.5**, `N=300`→**%21**, `N=600`→**%42**.
+  Eski "%12–19" hangi dereceye ait olduğu yazılmadan taşınıyordu. **WP5/WP16
+  bunu derece bandı başına ölçer ve tek sayı olarak raporlamaz.**
 - **Bu yüzden WP5'in birincil çıktısı bir eğri, bir yüzde değil:**
   `κ_eff(n_probe)` — aralık boyunca ortalanmış etkin yön isabeti, prob nokta
   sayısının fonksiyonu — ve karşısında ölçülen maliyet. İki uç ilan edilmiştir:
@@ -471,7 +476,24 @@ aralık başına `argmax θ`, ardından karma-tamsayılı optimal kontrolden gel
   çözücü değişir** ve iniş bir kontrol olarak raporlanır. Geçmezse iniş
   lehine bir kanıt satırı olur.
 
-**T3 — Eşleşmenin etkin rankı → olası `C-rank1` ★.**
+**T3 — Eşleşmenin etkin rankı ve altuzay tutarlılığı → olası `C-rank` ★.**
+
+**Ölçüm boyutsuzlaştırılmış formda yapılır.** `A_i` durum üzerinde bir
+kuadratik form ve `(r,v)` blokları farklı birim taşıyor; ham izi, özdeğerleri
+ve özyönleri birim sistemine bağlı — hızı m/s yerine km/s yazınca verdikt
+değişebilir. Doğru dönüşüm **eşlenik**tir (benzerlik değil):
+`Ã_i = Sᵀ A_i S` ile `S = diag(L,L,L,L/T,L/T,L/T)`
+(`tda.stm.nondimensionalise_form`). Aynı sorunu STM koşul sayısında zaten
+yakalamıştık; burası da aynı sınıf.
+
+**İki alt test, `C-rank` dalı ikisi birden geçerse açılır:**
+- **T3a** — `Ã_i` izinin %95'i için gereken özyön sayısı `p`. Gerekli koşul.
+- **T3b** — baskın altuzayın **zaman tutarlılığı**: ardışık epoklar arasında
+  asal açı `∠(U_p(t_i), U_p(t_{i+1}))`, bir korelasyon zamanı boyunca
+  birikmiş. `p ≤ 2` olması **tek bir** 1-B altuzay olduğu anlamına gelmez;
+  baskın özyön yay boyunca dönebilir ve o zaman 6-B yapı gerçekten
+  küçülmemiş olur.
+
 `M_j`'nin rankı tam olarak 3 (`H_r` üç bileşen seçiyor), ama `A_i`'nin
 **özdeğer dağılımı** ölçülmedi. STM'in baskın yönü along-track seküler
 büyüme olduğundan `A_i`'nin izinin çoğunun 1–2 özyönde toplanması **kuvvetle
@@ -505,7 +527,7 @@ WP6 pilot–referans farkını zaten ölçüyor. Bu fark `c`'ye bir pertürbasyo
 olarak uygulanır ve çizelge yeniden çözülür.
 - **Tescilli okuma:** profil uzaklığı G3 eşiğinin altındaysa dondurulmuş `c`
   meşrudur (`C-plan` tamam); üstündeyse çevrimiçi eşdurum güncellemesi
-  (adjoint/MPC veya T3'ün `C-rank1`'i) gerekli.
+  (adjoint/MPC veya T3'ün `C-rank`'i) gerekli.
 - **Maliyet:** WP6'nın yan ürünü.
 
 **T6 — Politika ifade edilebilirliği `A-fit` ★ (makalenin kendi tezinin
