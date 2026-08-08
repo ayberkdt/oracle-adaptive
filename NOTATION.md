@@ -281,12 +281,25 @@ yazılır.
 | **Karar ızgarası** | `Δt_dec`, `K_dec` aralık | `N`'nin parçalı sabit olduğu aralık — **karar değişkeni burada** | 120 s (kontrol edilir) |
 | **Prob ızgarası** | `Δt_probe` | kuyruk yön probunun tazelenme sıklığı | `≈ τ_corr` (aşağı) |
 
+**Biriktirme ızgarasının iki düğüm kümesi var (D124).** Hücre **kenarları**
+`e_0 = 0 < … < e_M = T` ve hücre **orta noktaları** `m_i = (e_i+e_{i+1})/2`.
+`Δa`, `Φ(t_0,·)` ve `u_i` **orta noktalarda**; amaç fonksiyonu ve `M_j`
+**kenarlarda** örneklenir. İç ağırlık `Δt_i = e_{i+1} − e_i` (orta nokta
+kuralı, ikinci mertebe, `j`'den bağımsız → önek yapısı korunur); dış ağırlık
+`ω_j` kenarlarda yamuk. Bir propagasyonun ziyaret etmesi gereken epok kümesi
+ikisinin birleşimidir (`2M+1` nokta). Gerekçe: PLAN §1.2.
+
 Dekorelasyon zaman ölçeği **uydu yarıçapıyla** yazılır (yüzey yarıçapıyla
 değil) ve yörünge boyunca sabit değildir:
 
 ```
 τ_corr = π r / (N v)
 ```
+
+`τ_corr` ızgara inceltmesinde **en yüksek aday dereceyle** hesaplanır: ızgara
+bütün adaylarca paylaşılıyor ve en ince doku en yüksek truncation'a ait; daha
+düşük bir dereceyle inceltmek kampanyanın kurulduğu karşılaştırmaları
+örtüşmeye (aliasing) sokar. İnceltme **eşdağıtım** ile (D125).
 
 | Rejim | `r` | `N` | `v` | yarı-dalga | `τ_corr` |
 |---|---|---|---|---|---|

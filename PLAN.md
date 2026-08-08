@@ -73,6 +73,24 @@ eski `1/M` formuna indirgeniyor. **`ω_j ≥ 0` şarttır** — `Q ⪰ 0` ve dol
 dışbükey gevşetmenin tamamı buna bağlı; dikdörtgen/yamuk sağlar, yüksek
 dereceli Newton–Cotes sağlamaz (D76).
 
+**İç kuadratür kuralı serbest değil — önek yapısı onu belirliyor (D124).**
+`S_j = Σ_{i≤j} u_i`'nin **düz** önek toplamı olması, `i` epokunun iç
+ağırlığının `j`'den **bağımsız** olmasını gerektirir:
+
+- **Yamuk kullanılamaz.** Uç katsayısı `(t_j − t_{j−1})/2`, yani `j`'ye bağlı;
+  `Q_ik = A_max(i,k)` yerine "o artı `j`-bağımlı düzeltme" kalırdı.
+- **Dikdörtgen yapıyı korur ama birinci mertebedir.** `n_s = 2`'de (Nyquist
+  sınırı) bu gerçek bir doğruluk kaybı, yuvarlama ayrıntısı değil.
+- **Uygulanan: orta nokta + kenar şeması.** Biriktirme düğümleri hücre
+  **orta noktalarında**, dış integral hücre **kenarlarında** örnekleniyor.
+  İç ağırlık tam hücre genişliği → `j`'den bağımsız → yapı **aynen** korunur;
+  kural orta nokta → **ikinci mertebe**; ve `S_j` tam olarak `j+1`. kenara
+  kadarki iç integraldir, ona bir yaklaşım değil. Dış integralde önek toplamı
+  olmadığı için orada yamuk serbest.
+
+Yani yukarıdaki formüllerde `t_i` **hücre orta noktası**, `t_j` **hücre
+kenarı**dır; ikisi çakışmaz. Uygulama: `tda.grids.AccumulationGrid`.
+
 ```
 c_i := Σ_k Q_ik u_k = (1/T) [ A_i · Σ_{k≤i} u_k  +  Σ_{k>i} A_k u_k ]
 ```
