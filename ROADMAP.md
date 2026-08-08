@@ -36,6 +36,64 @@ M4'te ~13 gece. Planın esas amacı bu.
 
 ---
 
+## M0/M1 öncesi açık borçlar
+
+Tam liste, koşu başlamadan önce. Bir madde burada yoksa kapanmış demektir;
+kapanınca buradan silinir ve DECISIONS'a geçer.
+
+### Koşuyu bloke edenler
+
+| # | Borç | Neden bloke | Nerede |
+|---|---|---|---|
+| **B1** | **Kümülatif-dereceye-göre çekirdek giriş noktası** yok | M1'in en büyük kalemini 60 kat düşürüyor (`N=600`: 8.4 sa → 8 dk) **ve** §7'nin prob maliyet modelini açıyor. Doğrulama şartı: bantların toplamı = sabit-derece sonucu, makine hassasiyetinde | D120/D138 |
+| **B2** | **Q13 kapalı değil:** kıyasın STM'i hangi gradyan derecesinde? | Düşük-perilun popülasyonu var ve önceki kampanya derece-120 gradyanın 31 km'de yetersiz olduğunu **ölçtü**. Ana kıyas için `N_G = N_ref`, sonra 8–14 yörüngelik tabakalı panelde `120→300→600` yakınsama kontrolü | Q13 |
+| **B3** | **`lunaris` commit SHA'sı pinlenmedi**; ayrıca özel (`_` önekli) `_compute_sh_acceleration_dual_numba` API'sine bağımlıyız | Yeniden üretilebilirlik; özel bir API sessizce değişirse kampanya iki kod yolundan gelir | D135 |
+| **B4** | **WP0 kabul kontrolü hiç koşulmadı** | Bütün kampanyanın "tek kod yolu" kuralı buna dayanıyor | WP0 |
+
+### Yazılmamış kod
+
+| Modül | İçerik | Bağımlı olduğu |
+|---|---|---|
+| `archive.py` | salt-okunur arşiv erişimi + WP0 kabul kontrolü | — |
+| `tables.py` | `Δa(t,N)` memmap tablosu, şema, provenance | archive, field, grids |
+| `kernel.py` | `A_i`, `K_i`, `c_i`, `J` — önek/sonek, Neumaier | stm, grids, tables |
+| `allocate/` | `separable`, `descent`, `frankwolfe` (LP-LMO, D132), `rounding` | kernel |
+| `policies.py` | `F-op`, `F-env`, `R-rad`, `R-int` | grids |
+| `probe.py`, `controller/` | bant probu, IFBDA, `C-plan`/`C-lite`/`C-fb` | spectrum, kernel |
+| `analysis/` | WP21'in T1–T7'si | allocate, kernel |
+| `io/` | manifest, digest zinciri, ön-tescil hash'i | — |
+
+### Ölçülmemiş sayılar (şu an tahmin)
+
+| Nicelik | Şu anki değer | Nasıl kapanır |
+|---|---|---|
+| `M` (hücre sayısı) | ~51 100 @ `N=300`, **vekil yörüngede** | gerçek arşiv yaylarında WP1 |
+| Tablo boyutu | ~74 MB/yörünge | `M` ölçülünce |
+| **Prob ek yükü** | **%12–19 yazılı ama dereceyle doğrusal** (D141) | WP5/WP16, derece bandı başına |
+| `inverse_residual`, `κ₂(Φ)` | hiç ölçülmedi | WP1, yay başına |
+| `float32` vs `float64` verdict paritesi | koşulmadı | WP1 |
+| Çekirdek zamanı bu makinede | arşivin makinesinden alındı | WP16 |
+
+### Manuskript borçları
+
+- 21 float'ın 13'ü metinden referanslanmıyor (WP19 teslim listesinde).
+- §2'de iki placeholder: kuadratik-sırt çantası / tamsayı-QP literatürü ve
+  çok-fidelite paragrafı.
+- **Q14** yazılmadı: ileri prob, en ucuz rakibi olan *bir önceki devirde aynı
+  fazda ölçüm*e karşı gerekçelendirilmemiş (yer izi kayması ≈33 km vs
+  `πr/N` = 48/19/10 km).
+- **Q15** yazılmadı: hızlı alan değerlendirme literatürüne karşı konum;
+  §7.1'in çözünürlük argümanı alanın kendisi için de kurulmalı.
+- 296 `\ph` yer tutucusu, 11 `\dnote`.
+
+### Depo
+
+- **`LICENSE` yok.** Public depo; karar bekliyor.
+- `paper/main.log` izlenmediği için CI'da taslak-iddia denetimi atlanıyor
+  (kasıtlı; lokalde `latexmk` sonrası koşuyor).
+
+---
+
 ## M0 — İskelet ve kabul
 
 `../codebase` arşivi salt-okunur içe alınır; bir arşiv değeri aynı kod
