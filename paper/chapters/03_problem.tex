@@ -127,6 +127,26 @@ write the transported epoch contribution and its partial sums as
 \end{equation}
 
 which uses only the cocycle property $\Phi(t_j,t_i)=\Phi(t_j,t_0)\Phi(t_0,t_i)$.
+
+\paragraph{Which quadrature rule the prefix sum permits.} That
+$\mathbf S_j$ is a \emph{plain} prefix sum is not a notational convenience; it
+requires the inner weight of epoch $i$ to be independent of the outer epoch
+$j$, and that requirement selects the rule. A trapezoid rule for the inner
+integral has endpoint coefficient $(t_j-t_{j-1})/2$, which depends on $j$, so
+carrying it would replace Eq.~\eqref{eq:Q-structure} by that structure plus a
+$j$-dependent correction and forfeit the $\max(i,k)$ form. A rectangle rule
+keeps the structure but is first-order, which at two samples per correlation
+time is not a rounding detail.
+
+We therefore place the accumulation nodes at the \emph{midpoints} of the
+grid cells and sample the outer integral at the cell \emph{edges}. The inner
+weight is then the full cell width --- independent of $j$, so
+Eq.~\eqref{eq:Q-structure} holds verbatim --- while the rule itself is the
+midpoint rule and second-order, and $\mathbf S_j$ is exactly the inner
+integral up to edge $j{+}1$ rather than an approximation to it. The outer
+integral carries no prefix sum and is free to use the trapezoid rule on the
+edges. Both weight sets are non-negative, which is what
+Section~\ref{sec:problem-structure} needs.
 The outer integral of Eq.~\eqref{eq:objective} is likewise a quadrature, with
 weights $\omega_j\ge0$ summing to $T$, so the discretized objective is a quadratic form
 in the stacked vector $\mathbf u=(\mathbf u_1,\dots,\mathbf u_M)$,
@@ -191,6 +211,7 @@ The result is an integer quadratic program with one knapsack constraint. Its
 structure, however, is unusually favourable.
 
 \subsection{The structure that makes it cheap}
+\label{sec:problem-structure}
 
 Because $\mathbf S_j$ is a prefix sum, the block of $\mathbf Q$ coupling epochs
 $i$ and $k$ collects exactly those $j$ that see both, that is $j\ge\max(i,k)$:
