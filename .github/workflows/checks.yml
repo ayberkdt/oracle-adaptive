@@ -1,0 +1,46 @@
+name: checks
+
+# The two consistency gates are described in README.md as things that "must be
+# run after every change".  Running them here is what makes that true rather
+# than aspirational.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install ruff==0.12.0
+
+      - name: Lint
+        run: ruff check .
+
+      # The suite deliberately uses the analytic fields of tda.analytic, so it
+      # runs without the spherical-harmonic kernel or the read-only archive.
+      # Anything that needs those is an integration test and is not run here.
+      - name: Unit tests
+        run: pytest -q
+
+      - name: Stale terminology gate
+        run: python check_stale.py
+
+      # This one also compares README's claims about the draft against
+      # paper/main.log.  That is a build product and is not committed, so on
+      # CI the derived-claims section reports itself skipped and the threshold
+      # probes run as normal.  The full check runs locally after latexmk.
+      - name: Stale number gate
+        run: python check_numbers.py

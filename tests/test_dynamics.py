@@ -16,139 +16,16 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from conftest import J2_MOON, MU_MOON, R_MOON
 from tda.analytic import J2Field, PointMassField
-from tda.config import GradientConfig, IntegratorConfig
+from tda.config import GradientConfig
 from tda.dynamics import (
-    SYMPLECTIC_J,
     IntegrationError,
     estimate_rhs_work_factor,
     estimate_syntheses_per_rhs,
-    position_rows,
     propagate,
-    symplectic_defect,
-    symplectic_inverse,
-    velocity_transport,
 )
-
-MU_MOON = 4.902800118e12
-R_MOON = 1.7374e6
-J2_MOON = 2.033e-4
-
-
-@pytest.fixture(scope="module")
-def circular_state() -> np.ndarray:
-    """A 100 km circular orbit, inclined so that :math:`J_2` acts."""
-    r = R_MOON + 1.0e5
-    speed = np.sqrt(MU_MOON / r)
-    inc = np.deg2rad(45.0)
-    return np.array([r, 0.0, 0.0,
-                     0.0, speed * np.cos(inc), speed * np.sin(inc)])
-
-
-@pytest.fixture(scope="module")
-def tight() -> IntegratorConfig:
-    return IntegratorConfig(rtol=1.0e-12, atol_position_m=1.0e-9,
-                            atol_velocity_m_s=1.0e-12, max_step_s=60.0)
-
-
-# ---------------------------------------------------------------------------
-# Symplectic algebra
-# ---------------------------------------------------------------------------
-
-
-def _random_symplectic(rng: np.random.Generator) -> np.ndarray:
-    """Build a symplectic matrix as the exponential of a Hamiltonian one.
-
-    ``H = J S`` with ``S`` symmetric is Hamiltonian, and ``expm(H)`` is
-    symplectic.  A small scaling keeps the exponential well conditioned so
-    the test measures the identity rather than the matrix exponential.
-    """
-    from scipy.linalg import expm
-
-    s = rng.normal(size=(6, 6))
-    s = 0.5 * (s + s.T)
-    return expm(0.05 * SYMPLECTIC_J @ s)
-
-
-def test_symplectic_inverse_is_an_inverse() -> None:
-    rng = np.random.default_rng(20260808)
-    for _ in range(8):
-        phi = _random_symplectic(rng)
-        assert np.allclose(symplectic_inverse(phi) @ phi, np.eye(6),
-                           rtol=0.0, atol=1e-12)
-
-
-def test_symplectic_inverse_is_batched() -> None:
-    rng = np.random.default_rng(1)
-    batch = np.stack([_random_symplectic(rng) for _ in range(5)])
-    inv = symplectic_inverse(batch)
-    assert inv.shape == batch.shape
-    assert np.allclose(inv @ batch, np.eye(6)[None], rtol=0.0, atol=1e-12)
-
-
-def test_symplectic_defect_vanishes_on_identity() -> None:
-    assert symplectic_defect(np.eye(6), 1.0, 1.0) == 0.0
-
-
-def test_free_drift_shear_is_symplectic() -> None:
-    """Not every off-diagonal term breaks the form, and it matters which.
-
-    ``I + tau*e_0 e_3^T`` is one component of free drift, and free drift is a
-    Hamiltonian flow, so the residual vanishes identically -- at first order
-    *and* at second, since ``E^T J E = 0`` for ``E = e_0 e_3^T``.  Recorded as
-    a test because it is the trap a hand-written "obviously wrong" matrix
-    falls into: perturbing a position row towards its *own* velocity column
-    produces a matrix that is still symplectic.
-    """
-    shear = np.eye(6)
-    shear[0, 3] = 1.0e-3
-    assert symplectic_defect(shear, 1.0, 1.0) == pytest.approx(0.0, abs=1e-15)
-
-
-@pytest.mark.parametrize(("index", "value", "why"), [
-    ((0, 0), 1.1, "position scaled with no compensating velocity contraction"),
-    ((0, 4), 1.0e-3, "x coupled to v_y; J e_0 = -e_3, so e_0 e_4^T is not "
-                     "Hamiltonian"),
-    ((1, 3), 1.0e-3, "y coupled to v_x; J e_1 = -e_4, so e_1 e_3^T is not "
-                     "Hamiltonian"),
-])
-def test_symplectic_defect_detects_a_broken_matrix(index, value, why) -> None:
-    """A matrix that is not symplectic must not pass silently.
-
-    Guards the warning in :func:`symplectic_inverse`: the block-transpose
-    identity returns a wrong answer for a general matrix, so the defect is the
-    only thing standing between a bad integration and a plausible number.
-
-    The perturbations are chosen against the criterion rather than by eye.
-    For :math:`\\Phi=\\mathbf I+\\varepsilon\\,\\mathbf e_a\\mathbf e_b^\\top`
-    the first-order residual vanishes exactly when
-    :math:`\\mathbf J\\mathbf e_a\\propto\\mathbf e_b`, and the second-order
-    term :math:`\\mathbf E^\\top\\mathbf J\\mathbf E` vanishes for every
-    rank-one :math:`\\mathbf E`.  Picking a pair that satisfies the
-    proportionality would therefore give a *symplectic* matrix and a test that
-    silently proves nothing -- which is what
-    :func:`test_free_drift_shear_is_symplectic` records.
-    """
-    broken = np.eye(6)
-    broken[index] = value
-    assert symplectic_defect(broken, 1.0, 1.0) > 1.0e-6, why
-
-
-def test_symplectic_defect_is_scale_invariant() -> None:
-    """The dimensionless residual must not depend on the chosen units."""
-    rng = np.random.default_rng(7)
-    phi = _random_symplectic(rng)
-    # Re-express the same operator in units where length and time differ.
-    scale = np.concatenate([np.full(3, 1.0e6), np.full(3, 1.0e6 / 5.0e3)])
-    dimensional = phi * scale[:, None] / scale[None, :]
-    a = symplectic_defect(phi, 1.0, 1.0)
-    b = symplectic_defect(dimensional, 1.0e6, 5.0e3)
-    # Both are roundoff-level; what is asserted is that re-expressing the same
-    # operator in other units does not manufacture a defect. Without the
-    # non-dimensionalisation, ``b`` would be of order the scale factors.
-    assert b == pytest.approx(a, rel=1e-6, abs=1e-12)
-    assert b < 1.0e-12
-
+from tda.stm import symplectic_defect
 
 # ---------------------------------------------------------------------------
 # The analytic gradient
@@ -269,8 +146,11 @@ def test_stm_stays_symplectic_over_an_orbit(circular_state, tight) -> None:
 
 
 def test_gradient_degree_is_recorded(circular_state, tight) -> None:
-    """``None`` means "match the reference degree" and must be resolved, not
-    stored as ``None``; Q13 turns on this number being auditable."""
+    """The resolved gradient degree must be recorded, not left as ``None``.
+
+    Q13 -- which gradient degree the benchmark STM is built at -- turns on
+    this number being auditable after the fact.
+    """
     field = J2Field(mu=MU_MOON, reference_radius=R_MOON, j2=J2_MOON)
     t_eval = np.array([0.0, 60.0])
 
@@ -327,25 +207,6 @@ def test_integration_failure_is_raised_not_absorbed(tight) -> None:
     radial_infall = np.array([R_MOON, 0.0, 0.0, 0.0, 0.0, 0.0])
     with pytest.raises(IntegrationError):
         propagate(field, radial_infall, np.array([0.0, 2.0e3]), 0, tight)
-
-
-# ---------------------------------------------------------------------------
-# Transport helpers
-# ---------------------------------------------------------------------------
-
-
-def test_velocity_transport_selects_the_acceleration_columns() -> None:
-    rng = np.random.default_rng(3)
-    phi = rng.normal(size=(4, 6, 6))
-    b = np.vstack([np.zeros((3, 3)), np.eye(3)])
-    assert np.array_equal(velocity_transport(phi), phi @ b)
-
-
-def test_position_rows_selects_the_position_block() -> None:
-    rng = np.random.default_rng(4)
-    phi = rng.normal(size=(4, 6, 6))
-    h_r = np.hstack([np.eye(3), np.zeros((3, 3))])
-    assert np.array_equal(position_rows(phi), h_r @ phi)
 
 
 def test_synthesis_count_is_explicit() -> None:

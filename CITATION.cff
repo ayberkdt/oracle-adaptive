@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: >-
+  oracle-adaptive: trajectory-aware truncation-degree allocation for lunar
+  gravity propagation
+message: >-
+  Work in progress. The manuscript is a draft whose numerical values are
+  placeholders, and no campaign result has been produced yet. Please cite the
+  repository rather than any number in it.
+type: software
+authors:
+  - given-names: Ayberk
+    family-names: Demirkanat
+    affiliation: Istanbul Technical University
+repository-code: "https://github.com/ayberkdt/oracle-adaptive"
+abstract: >-
+  Choosing a spherical-harmonic truncation degree over an orbit under a
+  quadratic work budget, when the objective takes its norm after a signed
+  integral against the state-transition matrix. The coupling matrix depends on
+  the epoch pair only through max(i,k), which keeps a full sweep linear in the
+  number of accumulation samples and admits a Frank-Wolfe bound on the
+  convex-hull relaxation. The repository holds the plan, the pre-registrations,
+  the draft, and the campaign code.
+keywords:
+  - astrodynamics
+  - spherical harmonics
+  - lunar gravity
+  - trajectory optimisation
+  - model fidelity

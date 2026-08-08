@@ -20,18 +20,14 @@ flags as open (Q13).  Stage M1 is therefore *not* free of integration, and
 :func:`estimate_syntheses_per_rhs` exists so that the number entering the
 manifest is computed rather than asserted.
 
-Why symplecticity is used rather than a matrix inverse
-------------------------------------------------------
-The allocation needs the *backward* transport :math:`\\Phi(t_0,t_i)`, and the
-integration produces the forward one.  Inverting a 6x6 matrix at every
-accumulation epoch would be correct but would also discard the structure: the
-flow of a time-dependent Hamiltonian is symplectic [Hairer2006]_, so the
-inverse is available in closed form by transposing blocks
-(:func:`symplectic_inverse`) with no factorisation and no conditioning
-question.  The same identity, evaluated as a residual, is a free accuracy
-diagnostic of the integration (:func:`symplectic_defect`) -- and because
-:func:`tda.field.gravity_gradient` symmetrises the gradient, that residual
-measures the integrator rather than differencing noise.
+What this module does not contain
+---------------------------------
+The algebra of :math:`\\Phi` -- the symplectic inverse that supplies the
+backward transport, the residual that diagnoses the integration, the row and
+column slices the objective needs -- is :mod:`tda.stm`.  It is separate
+because it depends on neither a gravity model nor an integrator, so a failure
+there is unambiguous; a test that exercised the inverse *through* a
+propagation could not say which of the two was wrong.
 
 References
 ----------
@@ -39,11 +35,7 @@ References
    Determination*, Elsevier, 2004, Ch. 4 -- variational equations and the
    state-transition matrix.
 .. [Montenbruck2000] O. Montenbruck and E. Gill, *Satellite Orbits*, Springer,
-   2000, §7.1 -- STM propagation, and the block-transpose inverse of a
-   symplectic STM.
-.. [Hairer2006] E. Hairer, C. Lubich, G. Wanner, *Geometric Numerical
-   Integration*, 2nd ed., Springer, 2006, Ch. VI -- symplecticity of
-   Hamiltonian flows and its use as a numerical diagnostic.
+   2000, §7.1 -- state-transition matrix propagation.
 .. [Hairer1993] E. Hairer, S. P. Nørsett, G. Wanner, *Solving Ordinary
    Differential Equations I*, 2nd ed., Springer, 1993 -- DOP853.
 """
@@ -59,30 +51,19 @@ from scipy.integrate import solve_ivp
 
 from tda.config import GradientConfig, IntegratorConfig
 from tda.field import GravityField, gravity_gradient
+from tda.stm import STATE_DIM
 
 __all__ = [
-    "SYMPLECTIC_J",
     "IntegrationError",
     "ReferenceArc",
     "estimate_rhs_work_factor",
     "estimate_syntheses_per_rhs",
-    "position_rows",
     "propagate",
-    "symplectic_defect",
-    "symplectic_inverse",
-    "velocity_transport",
 ]
 
 Arr = NDArray[np.float64]
 
-STATE_DIM = 6
 STM_DIM = STATE_DIM * STATE_DIM
-
-SYMPLECTIC_J: Arr = np.block([
-    [np.zeros((3, 3)), np.eye(3)],
-    [-np.eye(3), np.zeros((3, 3))],
-])
-"""The standard symplectic form :math:`\\mathbf J`, ordering ``(r, v)``."""
 
 
 class IntegrationError(RuntimeError):
@@ -320,169 +301,6 @@ def propagate(field: GravityField,
         ),
         n_rhs=int(sol.nfev),
     )
-
-
-# ---------------------------------------------------------------------------
-# Symplectic structure
-# ---------------------------------------------------------------------------
-
-
-def symplectic_inverse(phi: Arr) -> Arr:
-    """Invert a symplectic state-transition matrix by block transposition.
-
-    For :math:`\\Phi=\\bigl(\\begin{smallmatrix}A&B\\\\C&D\\end{smallmatrix}
-    \\bigr)` satisfying :math:`\\Phi^\\top\\mathbf J\\Phi=\\mathbf J`,
-
-    .. math::
-        \\Phi^{-1} \\;=\\; -\\mathbf J\\,\\Phi^\\top\\mathbf J
-        \\;=\\; \\begin{pmatrix} D^\\top & -B^\\top \\\\
-                                -C^\\top & A^\\top \\end{pmatrix},
-
-    a standard identity [Montenbruck2000]_.  Using it instead of a numerical
-    inverse removes a factorisation from the inner loop and removes the
-    conditioning question entirely: the accuracy of the result is the accuracy
-    of :math:`\\Phi` itself, which :func:`symplectic_defect` measures.
-
-    Parameters
-    ----------
-    phi:
-        Shape ``(6, 6)`` or ``(M, 6, 6)``.  Batched input is transposed in
-        one pass rather than looped.
-
-    Returns
-    -------
-    ndarray
-        Same shape as ``phi``.
-
-    Warnings
-    --------
-    The identity is exact only for a symplectic matrix.  It is *not* a
-    general inverse and will silently return a wrong answer for one.  Check
-    :func:`symplectic_defect` before relying on it; the campaign does so once
-    per arc and records the result.
-    """
-    phi = np.asarray(phi, dtype=float)
-    if phi.shape[-2:] != (STATE_DIM, STATE_DIM):
-        raise ValueError(f"expected (...,6,6), got {phi.shape}")
-
-    def transposed(block: Arr) -> Arr:
-        """Transpose the trailing two axes, leaving any batch axes alone."""
-        return np.swapaxes(block, -1, -2)
-
-    out = np.empty_like(phi)
-    out[..., 0:3, 0:3] = transposed(phi[..., 3:6, 3:6])   #  D^T
-    out[..., 0:3, 3:6] = -transposed(phi[..., 0:3, 3:6])  # -B^T
-    out[..., 3:6, 0:3] = -transposed(phi[..., 3:6, 0:3])  # -C^T
-    out[..., 3:6, 3:6] = transposed(phi[..., 0:3, 0:3])   #  A^T
-    return out
-
-
-def symplectic_defect(phi: Arr, length_scale: float,
-                      time_scale: float) -> Arr:
-    """Dimensionless residual of :math:`\\Phi^\\top\\mathbf J\\Phi=\\mathbf J`.
-
-    A free accuracy diagnostic: the exact flow preserves the symplectic form
-    [Hairer2006]_, so any residual is integration error.  Because the campaign
-    symmetrises the gravity gradient, the residual is not contaminated by
-    finite-difference asymmetry and reads as what it is.
-
-    Scaling
-    -------
-    The raw matrix is dimensionally inhomogeneous -- its position--velocity
-    blocks carry seconds and inverse seconds -- so a norm taken on it mixes
-    units and is meaningless.  The matrix is first non-dimensionalised by
-    :math:`\\mathbf S=\\operatorname{diag}(L,L,L,L/T,L/T,L/T)`,
-    :math:`\\tilde\\Phi=\\mathbf S^{-1}\\Phi\\mathbf S`, which leaves the
-    symplectic condition invariant because :math:`\\mathbf S` scales
-    :math:`\\mathbf J` by a single factor.
-
-    Parameters
-    ----------
-    phi:
-        Shape ``(6, 6)`` or ``(M, 6, 6)``.
-    length_scale, time_scale:
-        Characteristic scales, e.g. the initial radius and radius over speed.
-        Any consistent pair works; the residual is scale-invariant to within
-        the conditioning it is measuring.
-
-    Returns
-    -------
-    ndarray
-        Scalar for a single matrix, shape ``(M,)`` for a batch: the maximum
-        absolute entry of :math:`\\tilde\\Phi^\\top\\mathbf J\\tilde\\Phi
-        -\\mathbf J`.
-
-    Examples
-    --------
-    The identity is exactly symplectic.
-
-    >>> import numpy as np
-    >>> float(symplectic_defect(np.eye(6), 1.0, 1.0))
-    0.0
-    """
-    phi = np.asarray(phi, dtype=float)
-    if phi.shape[-2:] != (STATE_DIM, STATE_DIM):
-        raise ValueError(f"expected (...,6,6), got {phi.shape}")
-
-    scale = np.concatenate([
-        np.full(3, length_scale),
-        np.full(3, length_scale / time_scale),
-    ])
-    # S^-1 Phi S, with S diagonal: divide rows, multiply columns.
-    tilde = phi / scale[:, None] * scale[None, :]
-    residual = (np.swapaxes(tilde, -1, -2) @ SYMPLECTIC_J @ tilde
-                - SYMPLECTIC_J)
-    return np.max(np.abs(residual), axis=(-2, -1))
-
-
-# ---------------------------------------------------------------------------
-# Transport helpers
-# ---------------------------------------------------------------------------
-
-
-def velocity_transport(phi_inverse: Arr) -> Arr:
-    """Extract :math:`\\Phi(t_0,t_i)\\mathbf B`, the columns acceleration hits.
-
-    :math:`\\mathbf B` maps an acceleration into the velocity block of the
-    state, so :math:`\\Phi\\mathbf B` is simply the last three columns of
-    :math:`\\Phi`.  Forming :math:`\\mathbf B` and multiplying would allocate
-    a 6x3 matrix and do a 6x6 by 6x3 product per epoch to reproduce a slice;
-    this returns the slice.
-
-    Parameters
-    ----------
-    phi_inverse:
-        :math:`\\Phi(t_0,t_i)`, shape ``(...,6,6)`` -- typically the output of
-        :func:`symplectic_inverse`.
-
-    Returns
-    -------
-    ndarray, shape ``(...,6,3)``
-        Multiply by :math:`\\Delta\\mathbf a\\,\\Delta t` to obtain
-        :math:`\\mathbf u_i`.
-    """
-    return np.asarray(phi_inverse, dtype=float)[..., :, 3:6]
-
-
-def position_rows(phi: Arr) -> Arr:
-    """Extract :math:`\\mathbf H_r\\Phi`, the position rows.
-
-    The objective selects position before taking a norm, and
-    :math:`\\mathbf H_r=[\\,\\mathbf I_3\\;\\;\\mathbf 0\\,]` is a row slice.
-    The per-epoch block of the objective is then
-    :math:`\\mathbf M_j=(\\mathbf H_r\\Phi_j)^\\top(\\mathbf H_r\\Phi_j)`,
-    which :mod:`tda.kernel` forms from this.
-
-    Parameters
-    ----------
-    phi:
-        Shape ``(...,6,6)``.
-
-    Returns
-    -------
-    ndarray, shape ``(...,3,6)``
-    """
-    return np.asarray(phi, dtype=float)[..., 0:3, :]
 
 
 def estimate_syntheses_per_rhs(gradient: GradientConfig | None) -> int:

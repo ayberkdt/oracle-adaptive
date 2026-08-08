@@ -171,11 +171,27 @@ yapılamaz.
 |---|---|---|
 | **T1** | `J_desc − J*` ve `J* − L_FW` (kaba kuvvet/MIQP küresel optimumla) | iniş terimi toplamın **yarısından** fazlaysa çözücü değiştirilir |
 | **T2** | `S-round` çizelgesinin `J`'si | çok-başlangıçlı inişten iyiyse **kanonik çözücü değişir**, iniş kontrole düşer |
-| **T3** | `A_i` izinin %95'i için gereken özyön sayısı `p` | `p ≤ 2` → `C-rank1` dalı açılır; `p ≥ 4` → `C-plan` |
+| **T3a** | `A_i` izinin %95'i için gereken özyön sayısı `p` | `p ≤ 2` **gerekli koşul**, tek başına yeterli değil |
+| **T3b** | baskın altuzayın zaman tutarlılığı: ardışık epoklar arasında asal açı `∠(U_p(t_i), U_p(t_{i+1}))` | medyan asal açı, bir korelasyon zamanı boyunca birikmiş hâliyle **< 15°** ise altuzay tutarlı; `C-rank1` dalı **ancak T3a ve T3b birlikte** geçerse açılır |
 | **T4** | `ρ̂(H)/ρ̂(T)`, diz noktası `H*` | `≥ 0.90`'a ulaşan en küçük `H` = `H*`; `H* ≤ 1 devir` → kısa ufuk yeter |
 | **T5** | pilot–referans `c` pertürbasyonu altında çizelge profil uzaklığı | G3 eşiğinin üstündeyse çevrimiçi eşdurum gerekir |
 | **T6a** | düzgün-durum politikasının koruduğu kazanç kesri (A'da uydur, **B'de ölç**) | `≥ 0.60` → prob gereksiz; `≤ 0.25` → kazanç dokuda |
 | **T6b/T7** | vekil-model parametre sayısı vs korunan kesir | Pareto eğrisi olarak raporlanır, tek eşik yok |
+
+**T6'nın model sınıfı da tescillidir.** Aksi hâlde sonuçlar görüldükten sonra
+ağaç derinliği, düğüm sayısı, öznitelik normalizasyonu ve etkileşim terimleri
+oynanabilir; o zaman test yanlışlama testi olmaktan çıkar. Koşudan önce
+sabitlenen liste:
+
+- **Model sınıfı iki tanedir ve başkası denenmez:** (i) öznitelik başına
+  **kübik spline**, düğüm sayısı `{4, 8}`, toplamsal, etkileşim yok;
+  (ii) **karar ağacı**, `max_depth ∈ {3, 5, 7}`, başka hiperparametre yok.
+- **Öznitelikler T6a'da tam olarak** `(h, r, |v|, faz, kalan süre, harcanmış
+  bütçe)`; normalizasyon her öznitelik için tasarım A'nın çeyrekler açıklığına
+  bölme, sabit.
+- **Seçim yalnız tasarım A'nın çapraz doğrulamasında** yapılır (5 kat,
+  yörünge düzeyinde bölünmüş — aynı yörüngenin epokları iki kata dağılmaz).
+- **Verdikt yalnız tasarım B'de** okunur ve **bir kez** okunur.
 
 **Yanlışlama taahhüdü.** T6a `≥ 0.60` çıkarsa bu makalenin **bilgi iddiasının
 reddi**dir: kazanç doku değil geometri kaynaklıdır, bant probu gereksizdir ve

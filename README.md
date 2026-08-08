@@ -84,9 +84,47 @@ M1'e alındı (D8, G3).
 | 4 | [OUTCOMES.md](OUTCOMES.md) | Sonuç bantları, sahte-iyi artefakt tablosu, risk sicili, erken uyarı göstergeleri |
 | 5 | [NOTATION.md](NOTATION.md) | **Dondurulmuş adlar ve tanımlar.** Politika kodları, maliyet düzeyleri, ızgaralar, terminoloji |
 | 6 | [PREREG.md](PREREG.md) | Üç ön-tescilin tam metin taslağı (OA-01/02/03) + WP21 dallanma eşikleri |
-| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D126** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
+| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D136** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
 | 8 | [paper/](paper) | LaTeX manuskript taslağı — `main.tex`, `chapters/`, `references.bib` |
-| 9 | [src/tda/](src/tda) | Kampanya kodu — `config`, `field`, `dynamics`, `analytic`; [tests/](tests) altında birim testleri |
+| 9 | [src/tda/](src/tda) | Kampanya kodu (aşağıdaki katman tablosu); [tests/](tests) altında birim testleri |
+
+### Kod katmanları
+
+Bağımlılıklar tek yönlü; hiçbir modül yukarı bakmıyor.
+
+| Katman | Modül | Bağımlılık | Konu |
+|---|---|---|---|
+| 0 | `config` | — | donmuş sabitler + provenance hash |
+| 0 | `stm` | — | `Φ` cebiri: simplektik ters, artık tanısı, satır/sütun dilimleri |
+| 0 | `analytic` | — | kapalı-form alanlar (nokta kütle, `J₂`) |
+| 1 | `field` | config | **korunan** alanı değerlendirmek: ivme, kesme kusuru, gradyan |
+| 1 | `grids` | config | `τ_corr` eşdağıtımı, orta nokta/kenar şeması, karar ızgarası |
+| 2 | `spectrum` | field | **ihmal edilen** kuyruk: derece varyansları, `γ`, bant yığını |
+| 2 | `dynamics` | config, field, stm | referans yay + varyasyonel denklemler |
+
+### Depo tek başına yeterli DEĞİL
+
+`pip install -e ".[dev]" && pytest` **çalışır** — birim testleri bilerek
+`tda.analytic`'in kapalı-form alanlarını kullanıyor, küresel harmonik
+çekirdeğe ihtiyaç duymuyorlar. **Gerçek kampanya çalışmaz.** Üretim yolu
+şunları istiyor ve hiçbiri burada değil:
+
+| Bağımlılık | Ne için | Nerede |
+|---|---|---|
+| `lunaris` (`physics.spherical_harmonics`) | küresel harmonik sentez; **özel** `_compute_sh_acceleration_dual_numba` giriş noktası dahil | ayrı depo, **commit SHA pinlenmeli** |
+| `rev3_common` (`load_model`, `kernel_args`, `warmup`, `OMEGA_MOON`) | model yükleme, çekirdek argümanları, gövde dönüşü | `../codebase/python_codes`, salt-okunur arşiv |
+| GRAIL katsayı dosyası | alanın kendisi | arşivin çözdüğü yol |
+| Arşiv `metrics/` kayıtları | WP0 kabul kontrolünün karşılaştırdığı sayılar | salt-okunur arşiv |
+
+**Açık borç:** `lunaris` commit SHA'sı henüz pinlenmedi ve özel bir API'ye
+bağımlıyız (`_`-önekli); ikisi de gönderim öncesi manifeste yazılmalı.
+Lisans dosyası da henüz yok — public depo, karar bekliyor.
+
+**Neden alt klasör yok.** Alt paket, ≥2 kardeş modülü olduğunda açılır; tek
+dosyalık bir alt paket düz modülden kötüdür. Sırada olanlar zaten öyle
+gelecek: `allocate/` (separable, descent, frankwolfe, rounding),
+`controller/` (ifbda, plan, feedback), `analysis/` (WP21'in T1–T7'si).
+Şu anki yedi modül tek bir taban katmanı ve düz durması doğru.
 
 ### Taslak makinesi (`paper/preamble.tex`)
 
@@ -96,8 +134,11 @@ M1'e alındı (D8, G3).
 | `\dnote{...}` | metnin **yönü** hangi sonuca bağlı — editoryal to-do değil | `grep -rn '\\dnote{' chapters/` |
 | `\wpref{...}` | o pasajın sayılarını üreten iş paketi | — |
 
-`\draftfalse` ile temiz okuma sürümü derlenir. Şu an: **23 sayfa**,
-`\ph` sayısı ~350, `\dnote` sayısı 11; tanımsız referans/atıf yok.
+`\draftfalse` ile temiz okuma sürümü derlenir. Şu an: **28 sayfa**,
+`\ph` sayısı 296, `\dnote` sayısı 11; tanımsız referans/atıf yok.
+Bu üç sayı `check_numbers.py` tarafından **kaynaktan ve derleme çıktısından
+yeniden hesaplanıp** buradaki beyanla karşılaştırılıyor; elle güncellenmeleri
+gerekiyor ama bayat kalmaları mümkün değil.
 
 > **Kapsam donduruldu (D66).** Bu noktadan sonra yeni kontrol, ablasyon, kapı
 > veya WP eklenmez; yeni fikirler doğrudan PLAN §7 future work'e yazılır.

@@ -1,4 +1,6 @@
-"""Sayisal capraz denetim: esikler, sayimlar ve maliyetler dosyalar arasinda ayni mi?
+"""Sayisal capraz denetim across the documents and the draft.
+
+    Esikler, sayimlar ve maliyetler dosyalar arasinda ayni mi?
 
 check_stale.py eskimis TERIM arar; bu betik eskimis SAYI arar. Ikisi ayri
 kategori: bir esik dosyalar arasinda ayrisirsa terim taramasi bunu goremez.
@@ -9,11 +11,11 @@ degil. DECISIONS.md haric (tarihsel kayit eski sayilari korur).
 
 Kullanim: python check_numbers.py   (cikis kodu 1 ise tutarsizlik var)
 """
-import io
+import collections
 import glob
+import pathlib
 import re
 import sys
-import collections
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -70,7 +72,7 @@ PROBES = {
 
 
 def check_register_ranges() -> int:
-    """Do the README's stated D and Q ranges match the actual register?
+    """Compare the README's stated D and Q ranges with the register.
 
     The document index quotes ranges like "D1-D121" and "Q1-Q15" in prose, and
     prose does not update itself.  This drifted silently through fourteen
@@ -84,8 +86,8 @@ def check_register_ranges() -> int:
         Number of inconsistencies found.
     """
     bad = 0
-    decisions = io.open("DECISIONS.md", encoding="utf-8").read()
-    readme = io.open("README.md", encoding="utf-8").read()
+    decisions = pathlib.Path("DECISIONS.md").read_text(encoding="utf-8")
+    readme = pathlib.Path("README.md").read_text(encoding="utf-8")
 
     for kind, pattern in (("D", r"\*\*(?:~~)?D(\d+)"), ("Q", r"\*\*(?:~~)?Q(\d+)")):
         found = [int(n) for n in re.findall(pattern, decisions)]
@@ -108,12 +110,71 @@ def check_register_ranges() -> int:
     return bad
 
 
-def main():
-    bad = check_register_ranges()
+def check_derived_claims() -> int:
+    """Compare the README's claims about the draft with the draft.
+
+    Page count, placeholder count and note count are recomputed from the
+    sources and from ``main.log`` rather than compared against a second
+    hardcoded number.  A probe in :data:`PROBES` pins two literals to each
+    other and goes stale when both move; this one cannot, because one side is
+    always the artefact.
+
+    Returns
+    -------
+    int
+        Number of inconsistencies found.
+    """
+    log = pathlib.Path("paper/main.log")
+    if not log.exists():
+        print("-- taslak iddialari: paper/main.log yok, atlandi "
+              "(once latexmk calistirin)")
+        return 0
+
+    sources = [*sorted(glob.glob("paper/chapters/*.tex")), "paper/main.tex"]
+    body = "".join(pathlib.Path(f).read_text(encoding="utf-8") for f in sources)
+    readme = pathlib.Path("README.md").read_text(encoding="utf-8")
+    bs = re.escape(chr(92))
+
+    pages = re.findall(r"\((\d+) pages", log.read_text(encoding="utf-8",
+                                                       errors="replace"))
+    actual = {
+        "sayfa": int(pages[-1]) if pages else None,
+        "ph": len(re.findall(bs + r"ph\{", body)),
+        "dnote": len(re.findall(bs + r"dnote\{", body)),
+    }
+    claimed = {
+        "sayfa": _first_int(readme, r"\*\*(\d+) sayfa\*\*"),
+        "ph": _first_int(readme, r"`?" + bs + r"?ph`? sayısı (\d+)"),
+        "dnote": _first_int(readme, r"`?" + bs + r"?dnote`? sayısı (\d+)"),
+    }
+
+    bad = 0
+    for key, got in actual.items():
+        want = claimed[key]
+        if got is None or want is None:
+            bad += 1
+            print(f"!! taslak {key}: okunamadi (beyan={want}, olcum={got})")
+        elif got != want:
+            bad += 1
+            print(f"!! taslak {key}: README {want} diyor, olcum {got}")
+        else:
+            print(f"OK taslak {key}: {got}  (kaynaktan doğrulandı)")
+    return bad
+
+
+def _first_int(text: str, pattern: str) -> int | None:
+    """First integer captured by ``pattern``, or ``None`` if it does not match."""
+    m = re.search(pattern, text)
+    return int(m.group(1)) if m else None
+
+
+def main() -> int:
+    """Run every check and report the number of inconsistencies."""
+    bad = check_register_ranges() + check_derived_claims()
     for name, (pat, want) in PROBES.items():
         hits = collections.defaultdict(list)
         for f in FILES:
-            for m in re.finditer(pat, io.open(f, encoding="utf-8").read()):
+            for m in re.finditer(pat, pathlib.Path(f).read_text(encoding="utf-8")):
                 v = tuple(g for g in m.groups() if g)
                 if v:
                     hits[v].append(f)

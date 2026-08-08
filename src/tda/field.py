@@ -1,9 +1,12 @@
 """Gravity-field adapter.
 
-Everything the campaign asks of the gravity model passes through this module:
-the acceleration itself, the *truncation defect* that is the allocation's
-input, the gradient that generates the state-transition matrix, and the stack
-of omitted degree bands the online probe reads.
+Evaluating the field that is *retained*: the acceleration itself, the
+*truncation defect* that is the allocation's input, and the gradient that
+generates the state-transition matrix.
+
+What a truncation leaves *out* -- the omitted degree bands and the spectrum
+that restores their amplitude -- lives in :mod:`tda.spectrum`, which depends
+on this module and not the other way round.
 
 Nothing here reimplements spherical-harmonic synthesis.  The kernel is the
 archive's, a Pines-type singularity-free formulation [Pines1973]_ with the
@@ -33,8 +36,6 @@ References
    76, 2002.
 .. [Press2007] W. H. Press et al., *Numerical Recipes*, 3rd ed., CUP, 2007,
    §5.7 -- central differences and step-size choice.
-.. [Kaula1966] W. M. Kaula, *Theory of Satellite Geodesy*, Blaisdell, 1966 --
-   degree variances, used by :func:`degree_variance_gamma`.
 """
 
 from __future__ import annotations
@@ -49,11 +50,8 @@ from numpy.typing import NDArray
 from tda.config import GradientConfig
 
 __all__ = [
-    "BandStack",
-    "DifferencingBandStack",
     "GravityField",
     "LunarisField",
-    "degree_variance_gamma",
     "gravity_gradient",
 ]
 
@@ -391,166 +389,3 @@ def gravity_gradient(field: GravityField, r: Vec3, t: float,
     if cfg.symmetrise:
         g = 0.5 * (g + g.T)
     return g
-
-
-# ---------------------------------------------------------------------------
-# Omitted-band stack (the online probe's input)
-# ---------------------------------------------------------------------------
-
-
-class BandStack(Protocol):
-    """Supplies the leading omitted degree bands at a point.
-
-    The probe of manuscript §7.2 needs
-    :math:`\\sum_{n=N+1}^{N+k}\\mathbf a_n(t)` for every candidate degree
-    :math:`N` in a window.  Expressed as cumulative truncations this is a
-    difference of two partial sums, so what a caller actually needs is the
-    *cumulative* acceleration as a function of degree over the window.
-    """
-
-    def cumulative(self, r: Vec3, t: float, degrees: NDArray[np.int_]
-                   ) -> NDArray[np.float64]:
-        """Return :math:`\\mathbf a_{\\le n}` for each ``n`` in ``degrees``.
-
-        Returns
-        -------
-        ndarray, shape (len(degrees), 3)
-        """
-
-    def syntheses_for(self, n_degrees: int) -> int:
-        """Cost model: full syntheses one :meth:`cumulative` call would take.
-
-        A pure function of the request, so it can be asked *before* running
-        and used to price a design.  The manuscript's overhead accounting
-        (§7.2) turns on whether this is one or one-per-degree.
-        """
-
-    @property
-    def total_syntheses(self) -> int:
-        """Full syntheses actually performed so far.
-
-        The measured counterpart of :meth:`syntheses_for`.  The overhead
-        entering :math:`B_+` is this number, not the model, so that a table
-        reports the cost of the code that ran.
-        """
-
-
-class DifferencingBandStack:
-    """Band stack built by differencing independent fixed-degree syntheses.
-
-    This is the *correct but expensive* implementation and it is the honest
-    baseline.  The manuscript argues that a shared band stack costs one
-    Legendre recursion because the accumulator is already summed degree by
-    degree; that is true of the mathematics but **not** of the kernel as it
-    stands, which exposes fixed-degree and dual-degree entry points and no
-    cumulative-by-degree one.  Adding that entry point is a small change
-    inside the existing accumulation loop, but it is new kernel work and must
-    be validated (the summed bands must reproduce the fixed-degree result to
-    machine precision) before the manuscript's cost model may be quoted.
-
-    Until then this class supplies the same numbers at one synthesis per
-    requested degree, and reports that honestly so the measured overhead is
-    the overhead of the code that ran.
-
-    See Also
-    --------
-    tda.probe : consumes the stack and applies the amplitude completion.
-    """
-
-    __slots__ = ("_field", "_total")
-
-    def __init__(self, field: GravityField) -> None:
-        """Wrap ``field`` and start the synthesis counter at zero."""
-        self._field = field
-        self._total = 0
-
-    def cumulative(self, r: Vec3, t: float,
-                   degrees: NDArray[np.int_]) -> NDArray[np.float64]:
-        """Evaluate the field once per requested degree.
-
-        Raises
-        ------
-        ValueError
-            If ``degrees`` is empty; an empty stack would return an empty
-            array that the caller would silently sum to zero, which reads as
-            "no omitted acceleration" rather than as a bug.
-        """
-        degrees = np.atleast_1d(np.asarray(degrees, dtype=int))
-        if degrees.size == 0:
-            raise ValueError("degrees is empty; nothing to evaluate")
-        out = np.empty((degrees.size, 3), dtype=float)
-        for i, n in enumerate(degrees):
-            out[i] = self._field.acceleration(r, t, int(n))
-        self._total += degrees.size
-        return out
-
-    def syntheses_for(self, n_degrees: int) -> int:
-        """One synthesis per degree -- the price of not having a shared stack."""
-        return int(n_degrees)
-
-    @property
-    def total_syntheses(self) -> int:
-        """Full syntheses performed since construction; the measured cost."""
-        return self._total
-
-
-def degree_variance_gamma(sigma_a: NDArray[np.float64], degree: int,
-                          depth: int) -> float:
-    """Amplitude completion factor :math:`\\gamma(N,r)`.
-
-    The probe measures the direction of the omitted acceleration from the
-    first ``depth`` omitted bands; :math:`\\gamma` restores the magnitude of
-    the whole omitted tail,
-
-    .. math::
-        \\gamma = \\Bigl[\\frac{\\sum_{n>N}\\sigma_a^2(n)}
-                              {\\sum_{n=N+1}^{N+k}\\sigma_a^2(n)}\\Bigr]^{1/2}.
-
-    ``sigma_a`` is the *measured* per-degree acceleration RMS built from the
-    model's own degree variances, not a fitted power law.  The lunar spectrum
-    is not a single power law -- the previous campaign measured a spectral
-    slope of 2.13 against an effective tail exponent of 1.76 for the same
-    field -- so a Kaula-type extrapolation [Kaula1966]_ carries a systematic
-    error that a table of degree variances does not.  The power-law variant is
-    kept as the ablation ``abl-kaula`` rather than as the default.
-
-    Parameters
-    ----------
-    sigma_a:
-        Per-degree acceleration RMS at the evaluation radius, indexed so that
-        ``sigma_a[n]`` is degree ``n``.
-    degree:
-        Truncation degree :math:`N`.
-    depth:
-        Probe depth :math:`k`.
-
-    Returns
-    -------
-    float
-        The completion factor, :math:`\\ge 1` by construction.
-
-    Raises
-    ------
-    ValueError
-        If ``depth`` is not positive, or the probed window is empty or carries
-        no power -- each of which would make the ratio undefined rather than
-        large.
-    """
-    if depth <= 0:
-        raise ValueError(f"probe depth must be positive, got {depth}")
-    if degree < 0:
-        raise ValueError(f"degree must be non-negative, got {degree}")
-    tail = sigma_a[degree + 1:]
-    probed = sigma_a[degree + 1: degree + 1 + depth]
-    if probed.size == 0:
-        raise ValueError(
-            f"probe window is empty: degree={degree}, depth={depth}, "
-            f"spectrum has {sigma_a.size} entries"
-        )
-    denom = float(np.dot(probed, probed))
-    if denom <= 0.0:
-        raise ValueError(
-            f"probed bands {degree + 1}..{degree + depth} carry no power; "
-            "gamma is undefined"
-        )
-    return math.sqrt(float(np.dot(tail, tail)) / denom)

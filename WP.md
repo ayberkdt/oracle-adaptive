@@ -57,19 +57,26 @@ Sütunlar: **Soru** (ne cevaplıyor) · **Girdi** · **Çıktı** · **Maliyet**
 - **Soru:** `Δa(t,N)` **vektör** olarak (yalnızca norm değil) ve `Φ(t_0,t_i)`
   hangi ızgarada, hangi maliyetle elde edilir?
 - **Not:** önceki `rev14_oracle.py` yalnızca `d = ‖Δa‖²` saklıyordu. Buradaki
-  her şey vektöre bağlı → tablo formatı yeniden tanımlanmalı. Bellek maliyeti:
-  `M × |𝒩| × 3` float. `M=5041`, `|𝒩|≈60` → ~7 MB/yörünge, sorun değil.
-  `Δt_acc = 10 s` ise `M=60481` → ~87 MB/yörünge (float64).
-- **Uyarlanabilir ızgara (D55).** `τ_corr = πr/(Nv)` yörünge boyunca ~50 kat
-  değişiyor (perilunda 11–28 s, apolunda ~1500 s). Izgara `τ_corr`'e göre
-  inceltilir. Depolamayı ~10 kat düşürür ve fizik olarak doğru olan budur.
+  her şey vektöre bağlı → tablo formatı yeniden tanımlanmalı. Bellek maliyeti
+  `M × |𝒩| × 3` float64; `M` aşağıdaki inceltme hesabından çıkar.
+- **Uyarlanabilir ızgara (D55, D129 ile yeniden kalibre).** `τ_corr = πr/(Nv)`
+  tek paylaşılan inceltme derecesinde **5.6 kat** değişiyor (`N=300`: perilun
+  9.5 s, apolun 53.6 s). Izgara `τ_corr`'e göre inceltilir; düzgün-en-ince
+  ızgaraya karşı kazanç **2.5 kat**, eskiden sanılan 10 kat değil.
   Sonuç: `B1` **zaman-ağırlıklı** ortalama olmak zorunda.
+- **İnceltme, karar aralıklarının İÇİNDE yapılır (D130).** Böylece her karar
+  sınırı bir biriktirme kenarıdır; hiçbir hücre derece anahtarlamasını
+  kesmez, `W_q` tam aralık uzunluğudur ve boş karar aralığı yapısal olarak
+  imkânsızdır.
 - **Telafili toplama (D56).** Önek/sonek toplamlarında Kahan/Neumaier.
   `S_j` altmış bin işaretli terimin toplamı ve sadeleşme yöntemin ta kendisi;
   telafisiz toplamak gereksiz risk.
-- **Depolama çözümü, WP1'in teslimi (D44, D60 ile revize):** uyarlanabilir
-  ızgara depolamayı ~87 MB'den **~9 MB/yörünge**'ye indirdiği için **float32'ye
-  gerek kalmadı: tablo `float64` saklanır.** Erişim yine bellek-eşlemeli ve
+- **Depolama çözümü, WP1'in teslimi (D44, D60, D129 ile revize):** tablo
+  `M × |𝒩| × 3 × 8` bayt; `N=300` ve `|𝒩|≈60` ile **~74 MB/yörünge**,
+  `N=600`'de ~147 MB, 26 yörüngelik panelde disk ~2 GB. Tablo **`float64`
+  saklanır** — küçük olduğu için değil, **bellek-eşlemeli ve sıralı** okunduğu
+  için; RAM'e sığması gerekmiyor. **Gerçek `M` WP1'in ilk teslimi olarak
+  ölçülür**, tahmin edilmez. Erişim yine bellek-eşlemeli ve
   sıralı; önek/sonek toplamları (`M × 6`, ~0.3 MB) bellekte.
 - **Zorunlu test (D60):** `float32` vs `float64` **verdict parity** — aynı
   yörüngelerde çizelge ve verdict değişiyor mu. Makalenin merkezindeki sonuç

@@ -142,8 +142,9 @@ maliyeti yine **O(M·|𝒩|)**.
 ### 1.3 İki ızgara
 
 `Δa` yaklaşık `πr/N` ölçeğinde dekorele olur — **uydu yarıçapında**, ve bu
-yörünge boyunca sabit değil: `τ_corr = πr/(Nv)` perilunda 11–28 s, apolunda
-~1500 s (D55, ~50 kat). Karar değişkeni `N(t)` ise yörünge zaman ölçeğinde
+yörünge boyunca sabit değil: `τ_corr = πr/(Nv)`, tek paylaşılan inceltme
+derecesinde perilun/apolun oranı **5.6 kat** (D129; `N=300`'de 9.5 s ve 53.6 s).
+Eski "~50 kat" iki ucu farklı derecede okumaktan geliyordu. Karar değişkeni `N(t)` ise yörünge zaman ölçeğinde
 değişir. Bunlar aynı ızgara olamaz:
 
 - **Biriktirme ızgarası** `τ_corr`'a göre **uyarlanabilir** inceltilir; düzgün

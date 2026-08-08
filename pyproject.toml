@@ -20,5 +20,36 @@ dev = ["pytest>=7.4"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+tda = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# Lint configuration lives here rather than in a shell command, so that the
+# checks a contributor runs are the checks that were run.
+[tool.ruff]
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I", "UP", "SIM", "RET", "N", "C4", "PIE",
+          "PT", "RUF", "D"]
+ignore = [
+    # Docstring style choices, not defects.
+    "D203",   # incompatible with D211, which is the convention used here
+    "D213",   # summary on the first line, not the second
+    "D401",   # imperative mood: not how numpydoc summaries read
+    "D407", "D413",
+    # Docstrings carry LaTeX, so backslashes are escaped rather than raw.
+    "D301",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test bodies document themselves through their names and assertions; a
+# docstring is required only where the *reason* for the test is not obvious,
+# which is a judgement the linter cannot make.
+"tests/*" = ["D100", "D103"]
+# The consistency gates match Turkish prose and en dashes on purpose, so the
+# ambiguous-character rules fire on every pattern they are meant to contain.
+"check_*.py" = ["RUF001", "RUF002", "RUF003"]

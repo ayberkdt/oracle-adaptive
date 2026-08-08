@@ -301,14 +301,22 @@ bütün adaylarca paylaşılıyor ve en ince doku en yüksek truncation'a ait; d
 düşük bir dereceyle inceltmek kampanyanın kurulduğu karşılaştırmaları
 örtüşmeye (aliasing) sokar. İnceltme **eşdağıtım** ile (D125).
 
-| Rejim | `r` | `N` | `v` | yarı-dalga | `τ_corr` |
-|---|---|---|---|---|---|
-| perilun 50 km | 1788 km | 120 | 1.68 km/s | 47 km | **28 s** |
-| perilun 50 km | 1788 km | 300 | 1.68 km/s | 19 km | **11 s** |
-| apolun 2500 km | 4238 km | 20 | 0.45 km/s | 666 km | **~1500 s** |
+Referans yörünge: perilun 50 km (`r=1788` km), apolun 2500 km (`r=4238` km),
+`a=3013` km, `e=0.407`, periyot 4.12 sa. **Izgara tek bir paylaşılan derecede
+inceltildiği için tablonun her satırı aynı `N`'i kullanır** — bu düzeltilmiş
+tablodur (D129).
 
-**Elli kat değişiyor.** 120 s'lik bir ızgarada perilun civarında işaretli
-integral aliasing'e uğrar; apolunda ise 10 s'lik ızgara saf israftır.
+| İnceltme derecesi | `τ_corr` perilun | `τ_corr` apolun | oran | 7 günde hücre (`n_s=2`) |
+|---|---|---|---|---|
+| `N = 120` | 23.8 s | 133.9 s | 5.6× | ~20 500 |
+| `N = 300` | 9.5 s | 53.6 s | 5.6× | ~51 100 |
+| `N = 600` | 4.8 s | 26.8 s | 5.6× | ~102 300 |
+
+**Beş buçuk kat değişiyor, elli değil.** Oran `(r_a/v_a)/(r_p/v_p)`'dir ve
+dereceden bağımsızdır; eski tablodaki "~50 kat" perilunda `N=300`, apolunda
+`N=20` kullanmaktan geliyordu — paylaşılan tek ızgarada böyle bir seçenek yok.
+Yine de 120 s'lik düzgün bir ızgara perilunda işaretli integrali örtüşmeye
+sokar; asıl mesele budur ve o değişmedi.
 
 ### Biriktirme ızgarası uyarlanabilirdir (D55)
 
@@ -316,10 +324,16 @@ Düzgün 10 s'lik ızgara 7 günlük yayda 60 481 örnek üretir ve çoğu hiçb
 olmadığı apolundadır. Izgara `τ_corr`'e göre inceltilir (perilunda yoğun,
 apolunda seyrek). İki sonucu var:
 
-1. Depolama ~10 kat düşer (~87 → ~9 MB/yörünge) — D44'ün sorununu çözer ve
-   **float32'ye gerek bırakmaz: tablo `float64` saklanır** (D61). Kahan
-   toplama, float32'ye yazarken kaybedilen biti geri getirmez; ikisi ayrı
-   sorundur. `float32` vs `float64` verdict parity testi zorunlu.
+1. Depolama **2.5 kat** düşer — düzgün-en-ince ızgaraya karşı, tek paylaşılan
+   derecede (D129). Mutlak boyut inceltme derecesiyle **doğrusal** büyür:
+   `M × |𝒩| × 3 × 8` bayt, `|𝒩| ≈ 60` ile **`N=300`'de ~74 MB/yörünge**,
+   `N=600`'de ~147 MB. Eski "~87 → ~9 MB" hesabı hem 50 katlık sahte orandan
+   hem de düşük bir dereceden geliyordu.
+   **Sonuç `float64` kararını (D61) değiştirmiyor** ama gerekçesini
+   değiştiriyor: tablo artık "küçük olduğu için" değil, **bellek-eşlemeli ve
+   sıralı okunduğu için** `float64` kalıyor; RAM'e sığması gerekmiyor. 26
+   yörüngelik panelde disk ~2 GB. `float32` vs `float64` verdict parity testi
+   yine zorunlu ve artık daha da gerekli.
 2. `B1` artık **zaman-ağırlıklı** ortalamadır:
    ```
    B1 = Σ_i N_{g(i)}² Δt_i / T ,     B = Σ_i N_{g(i)}² Δt_i / Δt_ref

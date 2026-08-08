@@ -46,6 +46,31 @@ and the control variable is a discrete degree with a quadratic cost, so the
 adaptivity decision is a budgeted integer allocation rather than a refinement
 flag.
 
+\subsection{Discrete optimal control}
+
+The structure this paper exploits is, read from the continuous side, an
+adjoint one, and it is worth saying so rather than leaving a reader to notice
+it. Treating the degree as a discrete control and the accumulated displacement
+as a state, the allocation is a Mayer--Bolza problem with a mixed integer
+control; Pontryagin's principle \citep{pontryagin1962mathematical} then
+reduces the choice at each instant to minimizing a Hamiltonian against a
+costate, and the cross term $\mathbf c_i$ of Eq.~\eqref{eq:cross-term} is
+exactly that costate transported to $t_0$. The forward--backward iteration of
+Section~\ref{sec:controller-ifbda} is the corresponding two-point boundary
+value problem solved by successive sweeps
+\citep[Ch.~2]{bryson1975applied}, and the same reading places the method in
+the mixed-integer optimal control literature, where relaxation followed by
+sum-up rounding is the standard device \citep{sager2012integer}.
+
+Naming the connection costs nothing and clarifies what is and is not new here.
+The adjoint is not: it is a century old. What is specific is the combination
+--- a spherical-harmonic truncation degree as the control, an objective that
+is quadratic in a \emph{signed} integral so that the coupling is genuinely
+cross-epoch, a discretization whose coupling matrix collapses onto
+$\max(i,k)$ and therefore admits a certified bound rather than only a
+stationarity condition, and a deployable approximation whose limiting
+difficulty is informational rather than computational.
+
 \subsection{Sensitivity in astrodynamics}
 
 The state-transition matrix and the variational equations that generate it are

@@ -52,16 +52,28 @@ and a sensitivity-weighted allocation.
           running sums over $I_q$
       \EndFor
     \Until{no interval changes, or sweep limit}
-    \State record $(J(N),\,N)$
+    \State record the triple $\bigl(J_s,\;W_s,\;
+      F_\lambda^{(s)}=J_s+\lambda W_s\bigr)$
   \EndFor
-  \State $N^\star(\lambda) \gets \argmin_s J$ \Comment{best of starts, at this
-    $\lambda$}
+  \State $N^\star(\lambda) \gets \argmin_s F_\lambda^{(s)}$
+    \Comment{by the \emph{penalized} objective, not by $J$}
   \State $\lambda \gets$ bisect on $\sum_q W_q N_q^{\star2} - B$
 \Until{budget met to tolerance \ph{value}}
 \State \Return $N^\star$, $J(N^\star)$, and the spread of $J$ across
   $\mathcal{S}$
 \end{algorithmic}
 \end{algorithm}
+
+\paragraph{Which start wins is decided by the penalized objective.} At a fixed
+$\lambda$ the starts land in different basins, and those basins need not spend
+the same work: $J_s$ and $W_s$ both vary across $\mathcal S$. Selecting on
+$J_s$ alone would therefore prefer whichever basin bought a lower objective by
+spending more, which is not the solution of the Lagrangian subproblem and
+would leave the attained work $W(\lambda)$ free to rise with $\lambda$ for
+reasons that have nothing to do with the problem --- undermining the very
+monotonicity the outer bisection needs. The selection is on
+$F_\lambda=J+\lambda W$; all three quantities are recorded, and once the
+budget is matched the policies are compared on $J$.
 
 The multi-start loop sits \emph{inside} the bisection rather than outside it:
 each $\lambda$ is solved from scratch from all starts. That is more expensive
@@ -192,14 +204,37 @@ Eq.~\eqref{eq:certificate} is valid only if $\mathbf s$ attains the minimum of
 Eq.~\eqref{eq:fw-subproblem} over the \emph{relaxed} feasible set. Stopping the
 multiplier bisection at the nearest schedule whose integer budget falls below
 $B$ does not do that: it returns a feasible point, not a minimizer, and the
-resulting quantity is no longer a lower bound. Because
-Eq.~\eqref{eq:relaxation} permits fractional mixing, the budget can be met with
-equality --- at the critical multiplier the solution mixes the two adjacent
-degrees of the affected intervals with the weights that saturate the
-constraint. The implementation constructs that mixture explicitly and asserts
-$\lvert\sum_q W_q\sum_N\theta_{qN}N^2 - B\rvert$ at machine
-precision on every iteration; a run in which the assertion fails produces no
-certificate.
+resulting quantity is no longer a lower bound.
+
+It is worth being precise about which pair of degrees a fractional solution
+mixes, because the natural guess is wrong. Each candidate contributes a point
+$\bigl(c_N,\ell_N\bigr)=\bigl(N^2,\ \langle\nabla_q J,\mathbf u_q(N)\rangle
+\bigr)$ in a cost--value plane, and the multiplier solution of the relaxed
+subproblem selects vertices of the \emph{lower convex envelope} of those
+points. The pair mixed at the critical multiplier is a pair of neighbouring
+vertices \emph{of that envelope}, which need not be neighbours in
+$\mathcal{N}$: a candidate lying above the envelope --- say $N=50$ when
+$\mathcal{N}=\{40,50,60\}$ --- is never selected at any multiplier, and the
+exact solution mixes $40$ with $60$. Several intervals can also tie at the
+same critical multiplier, and the saturating weights must then be apportioned
+across all of them.
+
+Rather than implement that reasoning, the first version solves
+Eq.~\eqref{eq:fw-subproblem} as what it is --- a small linear program over the
+product of simplices with one knapsack row --- with
+\code{scipy.optimize.linprog} \citep{virtanen2020scipy}. It is
+$K_{\mathrm{dec}}\lvert\mathcal{N}\rvert$ variables and
+$K_{\mathrm{dec}}{+}1$ constraints, which is unremarkable for a simplex or
+interior-point solver, and it is exact by construction rather than by an
+argument about envelopes. A hand-rolled multiplier solver may replace it if
+profiling demands one, and Section~\ref{sec:ablations} checks the two against
+a brute-force optimum on short instances either way. The certificate is one of
+the paper's stronger claims; a dull verified solver is worth more here than a
+clever fragile one.
+
+The implementation asserts $\lvert\sum_q W_q\sum_N\theta_{qN}N^2 - B\rvert$ at
+machine precision on every iteration; a run in which the assertion fails
+produces no certificate.
 
 \paragraph{What the certificate does and does not license.} It bounds the
 distance to the best schedule \emph{of this problem}: the first-order

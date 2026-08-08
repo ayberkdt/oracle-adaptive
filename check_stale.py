@@ -7,7 +7,10 @@ karsilastirma, ablasyon adi vb.).
 Kullanim:  python check_stale.py
 Cikis kodu 1 ise supheli eslesme var.
 """
-import io, glob, re, sys
+import glob
+import pathlib
+import re
+import sys
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -27,7 +30,8 @@ STALE = [
      r"omega"),
     (r"2kN|2k/N",
      "eski prob maliyeti", "D50",
-     r"D50|D2 |es-konumlu|co-located|does not apply|yalniz|yalnız|C-lite|Clite|increment|already|zaten|sanil|sanıl|wrong one|rather than"),
+     r"D50|D2 |es-konumlu|co-located|does not apply|yalniz|yalnız|C-lite|"
+     r"Clite|increment|already|zaten|sanil|sanıl|wrong one|rather than"),
     (r"Kaula tail|Kaula kuyru|calibrated tail",
      "genlik artik olculen spektrumdan", "D53",
      r"D2 |abl-kaula|power law|guc yasas|güç yasas|tail criterion|tail rule"),
@@ -56,7 +60,8 @@ STALE = [
      r"uyarıdır|durdurma değil"),
     (r"zaman-indeksli|time-indexed",
      "denetleyici plani faz-indeksli", "D52",
-     r"abl-timeindex|D12 |D52|A-sens|A-sign|kiyas|kıyas|vs|yerine|replaced|benchmark|degil|değil|yanlis|yanlış|olurdu|would"),
+     r"abl-timeindex|D12 |D52|A-sens|A-sign|kiyas|kıyas|vs|yerine|replaced|"
+     r"benchmark|degil|değil|yanlis|yanlış|olurdu|would"),
     (r"τ_dec|tau_\{" + re.escape(BS) + r"mathrm\{dec\}\}",
      "tau_corr olarak yeniden adlandirildi", "D63",
      r"Delta t"),
@@ -99,12 +104,13 @@ STALE = [
 ]
 
 
-def main():
+def main() -> int:
+    """Scan every non-historical document for superseded wording."""
     issues = 0
     for f in FILES:
         if f in HISTORICAL:
             continue
-        t = io.open(f, encoding="utf-8").read()
+        t = pathlib.Path(f).read_text(encoding="utf-8")
         for pat, why, dec, ok in STALE:
             for m in re.finditer(pat, t):
                 ctx = re.sub(r"\s+", " ", t[max(0, m.start() - 200):m.start() + 200])
