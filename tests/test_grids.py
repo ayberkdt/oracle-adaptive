@@ -183,21 +183,29 @@ def test_nodes_are_the_cell_midpoints() -> None:
     assert np.all(grid.nodes < grid.edges[1:])
 
 
-def test_step_bounds_hold_per_interval() -> None:
-    """Clipping the cell count, not the widths, is what makes the bounds hold.
+def test_step_bounds_hold_to_the_integer_rounding() -> None:
+    """Clipping the cell count carries the bounds into the widths -- inexactly.
 
-    Within an interval the count is clipped to
-    ``[ceil(L/dt_max), floor(L/dt_min)]``, so both bounds hold exactly; the
-    only slack is the rounding of the density demand to an integer count,
-    which cannot push a width outside the clip.
+    An interval demanding ``S`` cells is given ``round(S)``, so the widths are
+    scaled by ``S/m`` and can miss a bound by ``1/(2m)``.  The assertion is
+    that bound and not a tighter one: at twenty-four cells the undershoot is
+    two per cent, and it was a real test failure that established the number
+    rather than an allowance made in advance.
     """
     cfg = GridConfig(samples_per_tau=2.0, dt_acc_min_s=5.0, dt_acc_max_s=60.0)
-    grid, _, _ = _build(cfg)
+    grid, dec, _ = _build(cfg)
 
-    assert grid.widths.min() >= cfg.dt_acc_min_s * (1.0 - 1e-9)
-    assert grid.widths.max() <= cfg.dt_acc_max_s * (1.0 + 1e-9)
+    for q in range(len(dec)):
+        cells = dec.cells_in(q)
+        m = cells.size
+        w = grid.widths[cells]
+        assert w.min() >= cfg.dt_acc_min_s * m / (m + 0.5) - 1e-9, f"interval {q}"
+        assert w.max() <= cfg.dt_acc_max_s * m / max(m - 0.5, 0.5) + 1e-9, q
+
     # The clamp must actually bind somewhere, or the test proves nothing.
     assert grid.widths.min() < 1.5 * cfg.dt_acc_min_s
+    # ... and the miss must stay small, or the rounding argument is too weak.
+    assert grid.widths.min() > 0.95 * cfg.dt_acc_min_s
 
 
 def test_refinement_follows_the_correlation_time() -> None:
@@ -303,9 +311,40 @@ def test_intervals_are_contiguous_in_time() -> None:
     assert np.all(np.diff(dec.interval_of) >= 0)
 
 
-def test_mismatched_grids_are_detected() -> None:
-    """Pairing a grid with edges it was not built against must not pass."""
-    grid, _, _ = _build(GridConfig(dt_dec_s=1200.0))
-    finer = build_decision_edges(DURATION, GridConfig(dt_dec_s=60.0))
-    with pytest.raises(ValueError, match="no accumulation cell"):
-        build_decision_grid(grid, finer)
+@pytest.mark.parametrize("other_dt_dec", [60.0, 90.0, 100.0, 250.0])
+def test_misaligned_decision_edges_are_detected(other_dt_dec) -> None:
+    """Boundaries that are not accumulation edges must not pair silently.
+
+    The empty-interval check alone is not enough.  It catches edges *finer*
+    than the cells, but a grid of small cells populates every interval of a
+    coarser misaligned grid, so that pairing used to succeed and produce a
+    ``W_q`` that was wrong by up to a cell at each end.  The invariant the
+    construction guarantees is that every boundary is an edge, and that is
+    what is now checked.
+    """
+    grid, _, _ = _build(GridConfig(dt_dec_s=120.0))
+    other = build_decision_edges(DURATION, GridConfig(dt_dec_s=other_dt_dec))
+    with pytest.raises(ValueError, match="not accumulation"):
+        build_decision_grid(grid, other)
+
+
+@pytest.mark.parametrize("coarser_dt_dec", [240.0, 360.0, 1200.0])
+def test_a_coarser_aligned_grid_is_accepted(coarser_dt_dec) -> None:
+    """Subsets of the boundaries are legitimate, and the guard must allow them.
+
+    A 240 s grid built on top of 120 s boundaries still has every boundary on
+    an accumulation edge, so no cell straddles a switch and ``W_q`` stays
+    exact.  Rejecting it would make the check a coincidence rather than the
+    invariant; the ablation that coarsens the decision grid depends on this.
+    """
+    grid, _, _ = _build(GridConfig(dt_dec_s=120.0))
+    coarser = build_decision_edges(DURATION,
+                                   GridConfig(dt_dec_s=coarser_dt_dec))
+    dec = build_decision_grid(grid, coarser)
+    assert np.allclose(dec.time_weight, coarser_dt_dec, rtol=0.0, atol=1e-9)
+
+
+def test_matched_grids_pair_without_complaint() -> None:
+    """The guard must not fire on the pairing the construction produces."""
+    grid, dec, edges = _build(GridConfig())
+    assert np.allclose(dec.edges, edges, rtol=0.0, atol=0.0)

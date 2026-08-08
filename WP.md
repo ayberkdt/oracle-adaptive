@@ -68,6 +68,26 @@ Sütunlar: **Soru** (ne cevaplıyor) · **Girdi** · **Çıktı** · **Maliyet**
   sınırı bir biriktirme kenarıdır; hiçbir hücre derece anahtarlamasını
   kesmez, `W_q` tam aralık uzunluğudur ve boş karar aralığı yapısal olarak
   imkânsızdır.
+- **CPU maliyeti — M1'in baskın kalemi ve şimdiye kadar bütçelenmemişti (D137).**
+  Tablo `M × |𝒩|` sentez istiyor: `N=300`, `M≈51 100`, `|𝒩|≈60` ile yörünge
+  başına **3.07 milyon sentez**. Arşivin ölçtüğü çekirdek süresiyle
+  (`e3_kernel_timing`: 454 µs @ N=300, 1508 µs @ N=600) 26 yörüngelik panel,
+  8 işlemci paralel:
+
+  | `N_ref` | sentez/yörünge | panel (8 çekirdek) | kümülatif çekirdekle |
+  |---|---|---|---|
+  | 120 | 1.23 M | ~0.1 sa | <0.01 sa |
+  | 300 | 3.07 M | **~1.3 sa** | ~0.02 sa |
+  | 600 | 6.14 M | **~8.4 sa** | ~0.14 sa |
+
+  Yani M1'in "2–3 gece"sine sığıyor, ama STM entegrasyonundan (~180
+  düz-propagasyon karşılığı) **daha büyük** ve planda hiç yoktu.
+- **Bu, D120'yi maliyet iddiasından çıkarıp fizibilite kalemine taşıyor.**
+  Kümülatif-dereceye-göre çekirdek giriş noktası `M × |𝒩|`'i `M`'e indiriyor:
+  tek Legendre geçişi bütün adayların `a_{≤N}`'ini kısmi toplamla veriyor.
+  **~60 kat**, yani `N=600`'de 8.4 saat → 8 dakika. Aynı giriş noktası prob
+  maliyet modelini de açıyor. Öncelik: **WP1'den önce**.
+
 - **Telafili toplama (D56).** Önek/sonek toplamlarında Kahan/Neumaier.
   `S_j` altmış bin işaretli terimin toplamı ve sadeleşme yöntemin ta kendisi;
   telafisiz toplamak gereksiz risk.

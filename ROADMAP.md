@@ -20,7 +20,7 @@ propagate etmek, önceki kampanyanın yaptığı hatanın aynısı olur.
 | Aşama | WP | Yay | Duvar saati | Çıkış kapısı |
 |---|---|---|---|---|
 | **M0** | WP0 | 0 | saatler | kabul kontrolü (+ geri düşüş) |
-| **M1** | WP1–WP6 | ~10 pilot + **~180 varyasyonel eşdeğeri** (D119) | 2–3 gece | **G1, G2, G3** (+`κ` tanısı) |
+| **M1** | WP1–WP6 | ~10 pilot + **~180 varyasyonel eşdeğeri** (D119) + **3.1 M sentezlik tablo** (D137) | 2–3 gece | **G1, G2, G3** (+`κ` tanısı) |
 | **M2** | WP7–WP13 | ~270 varyasyonel çözüm | 3–4 gece | **G5, G5b** |
 | **M2b** | WP21 (T1–T7) | **0** | 1–2 gece | mimari dallanma (kapı değil) |
 | **M3** | WP14 + WP17a | ~670 | 3–4 gece | **G6** |
@@ -60,9 +60,15 @@ dolayısıyla buradaki bütün hatalar öngörülmüş hatadır: `Ê = √J`, `E
 saklamıyor; WP1 her yörünge için 42 durumlu varyasyonel sistemi koşmak
 zorunda. Merkezi-fark gradyanı çağrı başına 6 sentez eklediği için bir
 varyasyonel yay ≈ **7× düz propagasyon** (eşit gradyan derecesinde).
-26 yörüngelik panelde bu **~180 düz-propagasyon karşılığı** — M1'in gerçek
-maliyeti ve manifeste yazılan sayı budur. Gradyan derecesi referansın altına
-çekilirse maliyet düşer; bu tam olarak Q13'ün ölçtüğü ödünleşim.
+26 yörüngelik panelde bu **~180 düz-propagasyon karşılığı** — M1'in bir
+maliyeti; **daha büyüğü tablo kurulumu** (D137): `M × |𝒩|` sentez, `N=300`'de
+panel başına ~1.3 saat, `N=600`'de **~8.4 saat** (8 çekirdek). Kümülatif
+çekirdek giriş noktası (D120) bunu ~60 kat düşürür.
+
+**Manifeste iki sayı yazılır:** varyasyonel eşdeğer ve tablo sentez sayısı.
+Gradyan derecesi referansın altına çekilirse birincisi düşer — bu tam olarak
+Q13'ün ölçtüğü ödünleşim; ikincisi ise `N_ref` ve `|𝒩|` ile belirlenir ve
+yalnızca D120 ile düşer.
 
 | Kapı | Ölçüt | Geçilemezse |
 |---|---|---|

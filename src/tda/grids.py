@@ -40,11 +40,20 @@ Node placement is by equidistribution [deBoor1973]_, the standard device of
 adaptive mesh generation [Huang2011]_: a node density
 :math:`\\rho(t)=n_s/\\tau_{\\mathrm{corr}}(t)` is integrated to a monotone
 :math:`S(t)`, and the edges are placed where :math:`S` crosses the integers.
-Clamping the *density* rather than the resulting steps is what makes the step
-bounds hold cell by cell: each cell spans unit density, so its width is the
-reciprocal of its own mean density and therefore inherits the clamp.  A
-post-hoc clip of the widths would move the edges and leave the neighbours
-outside the bound it was applied for.
+Clamping the *density* rather than the resulting steps is what carries the
+step bounds into the widths: each cell spans an equal share of density, so its
+width is that share divided by its own mean density and inherits the clamp.  A
+post-hoc clip of the widths would instead move the edges and leave the
+neighbours outside the bound it was applied for.
+
+The bounds are inherited to within the integer rounding, not exactly.  An
+interval whose density demands :math:`S_q` cells is given
+:math:`m_q=\\operatorname{round}(S_q)` of them, so the widths are scaled by
+:math:`S_q/m_q` and can miss a bound by a factor :math:`1\\pm1/(2m_q)`.  At
+twenty-four cells per interval that is two per cent, and there is no integer
+count that avoids it: rounding down would overshoot the upper bound by the
+same argument.  :func:`build_accumulation_grid` states the bound it actually
+delivers.
 
 The refinement runs **inside each decision interval**, so every decision
 boundary is an accumulation edge.  A cell straddling a boundary would be
@@ -401,11 +410,19 @@ def build_accumulation_grid(sample_t: Arr, sample_radius: Arr,
     Equidistribution [deBoor1973]_ inside each interval.  The node density is
     clamped to the reciprocals of the step bounds and integrated; an
     interval's cell count is the nearest integer to the density it
-    accumulates, itself clipped so that the resulting widths respect the
-    bounds -- at least ``ceil(L / dt_acc_max_s)`` cells and at most
+    accumulates, itself clipped so that the widths respect the bounds -- at
+    least ``ceil(L / dt_acc_max_s)`` cells and at most
     ``floor(L / dt_acc_min_s)``.  Clipping the count rather than the widths is
-    what keeps the bounds exact; clipping widths afterwards would move the
+    what carries the bounds through; clipping widths afterwards would move the
     edges and leave the neighbours outside the bound it was applied for.
+
+    **The bound delivered** is not the bound requested but
+    ``dt_acc_min_s * m/(m+0.5) <= width <= dt_acc_max_s * m/(m-0.5)`` for an
+    interval holding ``m`` cells, because the density demand is rounded to an
+    integer count and the widths are scaled by the rounding.  At twenty-four
+    cells that is two per cent.  No integer count avoids it -- rounding the
+    other way overshoots the upper bound instead -- so it is stated rather
+    than papered over.
 
     Parameters
     ----------
@@ -529,6 +546,21 @@ def build_decision_grid(grid: AccumulationGrid,
     """
     decision_edges = np.asarray(decision_edges, dtype=float)
     n_intervals = decision_edges.size - 1
+
+    # Both directions.  An empty interval catches decision edges finer than
+    # the cells, but not the reverse: a grid built against *coarser* edges has
+    # cells small enough to populate every finer interval and would pair
+    # silently.  Requiring each boundary to be an edge catches both, and is
+    # the invariant the construction actually guarantees.
+    missing = ~np.isclose(
+        decision_edges[:, None], grid.edges[None, :], rtol=0.0, atol=1e-9
+    ).any(axis=1)
+    if missing.any():
+        raise ValueError(
+            f"{int(missing.sum())} decision boundary(ies) are not accumulation "
+            f"edges (first at t={float(decision_edges[missing][0]):.6g} s); the "
+            "accumulation grid was not built against these decision edges")
+
     interval_of = np.clip(
         np.searchsorted(decision_edges, grid.nodes, side="right") - 1,
         0, n_intervals - 1,
