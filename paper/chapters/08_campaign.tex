@@ -1,0 +1,233 @@
+\section{Propagated campaign}
+\label{sec:campaign}
+
+Sections~\ref{sec:benchmark} and~\ref{sec:controller} are first-order
+statements about a fixed reference trajectory. This section propagates.
+
+\subsection{Screening}
+
+Each augmented variational solve costs about one propagation, and a propagated
+comparison costs several, so candidates were screened before they were flown.
+The screening instrument is the forced variational solution, which in the
+previous campaign reproduced the sign of the propagated ratio on \ph{n} of
+\ph{n} resolved comparisons of a \ph{n}-orbit panel. All candidates share one
+reference trajectory and one gradient inside a single augmented integration and
+differ only through their $\Delta\mathbf a$, so a panel of \ph{n} orbits is
+solved once per orbit with every candidate as a separate forcing channel rather
+than once per candidate. The selection rule, the panel and the number of
+candidates allowed through --- two --- were fixed before the screen ran.
+\ph{list the candidates and the outcome.} \wpref{WP13}
+
+\paragraph{One caution about the screen, stated because it is load-bearing.}
+The previous campaign's calibration of this instrument was established on
+policies that were \emph{not} constructed by minimizing $J$. \Asign\ is, and so
+are the controllers distilled from it. Scoring a candidate with the same
+functional it was optimized against ranks candidates fairly but does not test
+whether $J$ predicts $E$ for that class of schedule --- it assumes it. That
+assumption is what the sign check below tests, which is why a failure there is
+treated as a statement about the instrument rather than as noise, and why the
+screening escape of Section~\ref{sec:setup-prereg} bounds how long it may be
+diagnosed.
+
+\subsection{What is propagated}
+
+Five policies are propagated at each campaign point, and two of them are there
+for reasons worth stating. \Asign\ is propagated because the first-order
+benchmark has to be tested as a trajectory statement, not assumed to be one,
+and because it is the denominator of the capture fraction below. \Rint\ is
+propagated because it is the strongest deployable schedule available before
+this paper, so beating \Fop\ while losing to \Rint\ would not be a result.
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+  \toprule
+  Propagated & \Cplan, \Cfb\ (or the two screened candidates), \Asign, \Fop, \Rint \\
+  Not propagated & \Fenv, constructed as a lower envelope over the constant
+    family sweep \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Each of the four calibrated policies --- the two screened controllers,
+\Asign\ and \Rint\ --- is brought onto the anchor $B_{\mathrm{tot}}$ by the
+iteration of Section~\ref{sec:setup-budgets}, which is why the campaign
+propagates more arcs than it compares: \ph{value} propagations per policy per
+orbit, \ph{n} in total. \Fop\ is the anchor and is not calibrated.
+Table~\ref{tab:beta1} reports the achieved match alongside each verdict, and no
+comparison is read where the match falls outside the declared band.
+
+Arcs from the previous campaign are reused only where their realized work can
+be matched under the same convention; where it cannot, the arc is propagated
+again. Every reused arc is flagged as such in the record, because the earlier
+campaign matched a different budget definition and a silent reuse would charge
+that difference to the method. \ph{n} arcs were reused and \ph{n} were
+recomputed.
+
+\subsection{Equal realized work at $\beta=1$}
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{The controller against both constant-degree comparators at
+  $\beta=1$, matched on realized total quadratic work including the
+  controller's own overhead $B_+$. Counts are per-orbit comparisons clearing
+  the summed reference-inclusive envelope; $\rho$ is the median of per-orbit
+  ratios over all orbits of the design, not over the resolved subset. Every
+  candidate sits on the anchor $B_{\mathrm{tot}}$ to within \ph{pct}; the
+  achieved match is archived per orbit and its worst case quoted here.
+  \ph{fill from WP14}}
+  \label{tab:beta1}
+  \begin{tabular}{@{}lcccccc@{}}
+    \toprule
+    & \multicolumn{3}{c}{Design A} & \multicolumn{3}{c}{Design B} \\
+    \cmidrule(lr){2-4}\cmidrule(lr){5-7}
+    Comparator & wins & losses & $\rho$ & wins & losses & $\rho$ \\
+    \midrule
+    \Fop\ (deployable)   & \ph{n} & \ph{n} & \ph{value} & \ph{n} & \ph{n} & \ph{value} \\
+    \Rint\ (deployable)  & \ph{n} & \ph{n} & \ph{value} & \ph{n} & \ph{n} & \ph{value} \\
+    \Fenv\ (post hoc)    & \ph{n} & \ph{n} & \ph{value} & \ph{n} & \ph{n} & \ph{value} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\ph{two paragraphs} The verdict against \Fop\ and \Rint\ is the claim; the row
+against \Fenv\ is reported because a reader is entitled to know how much of the
+constant family's potential the deployable comparator leaves unused, and it is
+not a policy anyone could select in advance.
+
+\begin{figure}[!tbp]
+  \centering
+  \ph{figures/fig\_oa\_beta1\_per\_orbit.pdf}
+  \caption{Orbit-by-orbit ratio at $\beta=1$, sorted within each design.
+  Colour records each orbit's own resolution verdict, so grey bars are
+  comparisons the experiment cannot decide rather than ties.}
+  \label{fig:beta1}
+\end{figure}
+
+\subsection{Capture fraction}
+
+The controller is measured against the benchmark it approximates:
+
+\begin{equation}
+  f \;=\; \frac{E_{\Fop}-E_{\Cplan}}{E_{\Fop}-E_{\Asign}} ,
+  \qquad\text{defined only where}\quad
+  E_{\Asign} < E_{\Fop}
+  \;\text{ and }\;
+  M_{\mathrm{res}}(\Fop,\Asign) > 1 .
+  \label{eq:capture}
+\end{equation}
+
+Three details are fixed in advance. The benchmark \Asign\ is not deployable and
+carries no overhead, so it receives the full $B_{\mathrm{tot}}$ while \Cplan\ receives $B_{\mathrm{tot}}-B_+$; that asymmetry is deliberate, and it is why
+$f$ measures the price of deployability rather than only the quality of the
+approximation. Both terms are propagated errors $E$, never predictions, so $f$
+does not exist before this section. And $f>1$ is possible without being an
+error: \Asign\ is a first-order optimum on the reference arc and can be beaten
+on the arc it is actually flown along, which is what
+Section~\ref{sec:campaign-fixedpoint} tests separately.
+
+The validity condition is not cosmetic. Where the benchmark does not beat the constant
+degree the denominator is negative and $f$ has no interpretation; where the two
+are separated by less than the numerical envelope it is a ratio of two
+unresolved quantities and diverges. Orbits failing either test are reported as
+\emph{not applicable} and counted, never coerced to zero or to a large number.
+\ph{n} of \ph{n} orbits are eligible. \ph{one paragraph with the median $f$ by
+design and budget.}
+
+\begin{figure}[!tbp]
+  \centering
+  \ph{figures/fig\_oa\_capture.pdf}
+  \caption{Capture fraction across the budget grid, both designs.}
+  \label{fig:capture}
+\end{figure}
+
+\subsection{Across the budget grid}
+
+\ph{one paragraph plus table} $\beta\in\{0.50,0.75,1.00,1.25,1.50\}$. The
+compute-starved end is where every deployable alternative lost in the previous
+campaign, so it is reported first and separately. \ph{state the verdict at
+$\beta=0.50$ explicitly, whichever way it goes.}
+
+\dnote{H4 and H5 are decided here and are separate hypotheses on purpose: H5
+($\beta=0.5$) can be rejected without touching H4. Report a rejection as a
+rejection.}
+
+\subsection{Across populations}
+
+\ph{one paragraph plus table} Designs A, B, C; the five geometry strata; the
+wide-elliptic population, which is the regime where the previous paper's radial
+endpoint \emph{won}, so a trajectory-aware controller that fails there is
+regime-bound; and the low-perilune subset, where the linearization behind both
+the benchmark and the planner is weakest and only signs are read.
+
+\subsection{Cost ladder}
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{What ``equal budget'' equals, down the four costs of
+  Section~\ref{sec:setup-budgets}, as controller over comparator. Only the
+  primary row is matched by construction. \ph{fill from WP16}}
+  \label{tab:cost-ladder}
+  \begin{tabular}{@{}lccl@{}}
+    \toprule
+    Cost & A & B & \\
+    \midrule
+    Realized total quadratic work $B_2$ & \ph{value} & \ph{value} & matched by construction \\
+    \quad of which controller overhead $B_+$ & \ph{pct} & \ph{pct} & pilot arc, probe, planning \\
+    Nominal per-call work $B_1$ & \ph{value} & \ph{value} & reported for comparability only \\
+    Right-hand-side calls made & \ph{value} & \ph{value} & \\
+    End-to-end wall time & \multicolumn{2}{c}{\ph{value}} & on \ph{n} timed orbits \\
+    Measured kernel time $B_3$ & \multicolumn{2}{c}{\ph{value}} & idle machine, three repeats \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\ph{one paragraph} The overhead row is the one to read first: a controller that
+wins on error while spending its margin on its own planning has not won.
+
+\subsection{Does the first-order benchmark survive propagation?}
+\label{sec:campaign-fixedpoint}
+
+\Asign\ optimizes a linearization about a fixed reference arc. When its
+schedule is flown, the trajectory changes, $\Phi$ changes, and the local defect
+changes with them, so the schedule that was optimal for the reference arc need
+not be optimal for its own. The fixed-point test propagates the schedule,
+re-tabulates along the resulting arc, re-solves, and propagates again.
+\ph{one paragraph: how far the schedule moves, how far the error moves, and
+after how many iterations.} \wpref{WP17}
+
+\dnote{This is the test that decides whether \Asign\ is a
+\emph{trajectory-level} benchmark or a \emph{reference-arc} one. If the gain
+does not survive, say so in these words and rename the quantity throughout;
+that outcome is a strong negative result about signed allocation and is worth
+stating cleanly rather than burying.}
+
+\subsection{Controls}
+
+Each was drawn under a rule fixed before the runs it selects, and each targets
+a way the result could be an artefact rather than a measurement.
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Registered controls. \ph{fill}}
+  \label{tab:controls}
+  \begin{tabular}{@{}p{0.24\textwidth}p{0.30\textwidth}p{0.38\textwidth}@{}}
+    \toprule
+    Control & What it tests & Outcome \\
+    \midrule
+    Reference degree $300\to600$ & whether large ratios are
+      reference-adjacency artefacts rather than measurements & \ph{outcome} \\
+    Decision-grid parity & that \Asign\ and \Cplan\ switch on the same grid, so
+      the benchmark's margin is information and not resolution & \ph{outcome} \\
+    Degree-cap audit & orbits whose schedule reaches the reference degree,
+      where its force model \emph{is} the reference model & \ph{outcome} \\
+    Phase-shifted initial states & whether the signed allocation is fitted to
+      one arc's cancellation pattern & \ph{outcome} \\
+    Time-indexed against altitude-binned schedule & whether the gain belongs to
+      the schedule's form & \ph{outcome} \\
+    Decision-grid coarsening & whether it belongs to the decision cadence &
+      \ph{outcome} \\
+    Information-source audit & that no \Cplan\ run read the reference field or
+      the reference arc & \ph{outcome} \\
+    \bottomrule
+  \end{tabular}
+\end{table}

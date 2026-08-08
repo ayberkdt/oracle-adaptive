@@ -1,0 +1,112 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage[margin=2.3cm,headheight=14pt]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs,tabularx}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\footnotesize\itshape Trajectory-aware allocation of a
+spherical-harmonic degree budget}
+\fancyhead[R]{\footnotesize\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\setlength{\parskip}{0pt}
+\setlength{\parindent}{1.2em}
+\captionsetup{font=small,labelfont=bf,labelsep=period,skip=4pt}
+
+\renewcommand{\arraystretch}{1.12}
+\setlength{\tabcolsep}{5pt}
+\setlength{\heavyrulewidth}{0.9pt}
+\setlength{\lightrulewidth}{0.5pt}
+\setlength{\aboverulesep}{2.2pt}
+\setlength{\belowrulesep}{2.2pt}
+
+\newcommand{\papertitle}{Trajectory-aware allocation of a spherical-harmonic
+degree budget: a non-separable formulation, an attainability benchmark, and a
+deployable controller}
+
+\hypersetup{
+  pdftitle={\papertitle},
+  pdfauthor={Ayberk Demirkanat},
+  pdfsubject={Trajectory-aware spherical-harmonic degree allocation under a
+    declared compute budget},
+  pdfkeywords={lunar gravity field; spherical harmonics; truncation degree;
+    resource allocation; state-transition matrix; orbit propagation; GRAIL}
+}
+
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.80}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+% ===========================================================================
+% DRAFT MACHINERY -- remove before submission
+% ===========================================================================
+%
+% \ph{...}   numeric placeholder. Every one of these must eventually be
+%            replaced by a macro generated into metrics/ by the campaign
+%            scripts, exactly as the previous paper did, so that no number is
+%            typed by hand into the prose. Find them all with:
+%                grep -rn '\\ph{' chapters/
+%
+% \dnote{..} a note about which way the text will have to go depending on the
+%            campaign outcome. These mark the paragraphs whose DIRECTION is
+%            not yet known -- they are not editorial to-dos.
+%
+% \wpref{..} the work package (see ../WP.md) that produces the numbers for the
+%            surrounding passage.
+%
+% Set \draftfalse to typeset a clean version for reading; placeholders then
+% render as a plain marker rather than in colour, and \dnote disappears.
+
+\newif\ifdraft
+\drafttrue
+
+% \ph is \ensuremath-wrapped so that it is legal inside and outside math mode.
+\ifdraft
+  \newcommand{\ph}[1]{\ensuremath{\langle\,\text{\color{red}\sffamily #1}\,\rangle}}
+  \newcommand{\dnote}[1]{\par\vspace{2pt}\noindent
+    {\small\color{blue!60!black}\textsf{[direction] #1}}\par\vspace{2pt}}
+  \newcommand{\wpref}[1]{\textcolor{green!35!black}{\textsf{\footnotesize[#1]}}}
+\else
+  \newcommand{\ph}[1]{\textbf{??}}
+  \newcommand{\dnote}[1]{}
+  \newcommand{\wpref}[1]{}
+\fi
+
+% Shorthand for the policy codes of NOTATION.md, so a rename is one edit.
+\newcommand{\Fop}{\textsc{f-op}}
+\newcommand{\Fenv}{\textsc{f-env}}
+\newcommand{\Rrad}{\textsc{r-rad}}
+\newcommand{\Rint}{\textsc{r-int}}
+\newcommand{\Aforce}{\textsc{a-force}}
+\newcommand{\Asens}{\textsc{a-sens}}
+\newcommand{\Asign}{\textsc{a-sign}}
+\newcommand{\Cplan}{\textsc{c-plan}}
+\newcommand{\Cfb}{\textsc{c-fb}}
+\newcommand{\Ctgo}{\textsc{c-tgo}}
+\newcommand{\Clite}{\textsc{c-lite}}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+\newcommand{\dd}{\mathrm{d}}

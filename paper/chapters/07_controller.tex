@@ -1,0 +1,504 @@
+\section{A deployable controller}
+\label{sec:controller}
+
+The benchmark of Section~\ref{sec:benchmark} evaluates the reference field at
+every epoch of a reference trajectory it already knows. This section removes
+that access and measures what each removal costs. This is RQ3.
+
+\paragraph{What ``without the reference field'' means, precisely.} The
+distinction is not between having and not having the gravity model --- a
+propagator carries the coefficients by definition, and pretending otherwise
+would be artificial. It is between \emph{global, offline model metadata} and
+\emph{trajectory-specific evaluations of it}:
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+  \toprule
+  & Available to the controller & Withheld \\
+  \midrule
+  Field & degree variances $P_n$ (a table of \ph{n} numbers) &
+    $\Delta\mathbf a_{\mathrm{ref}}(t)$ along the arc \\
+  Trajectory & a cheap pilot arc it computes itself & the reference arc \\
+  Sensitivity & $\Phi$ from low-degree variational equations & the exact $\Phi$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+The controller may know the spectrum; it may not be told what the omitted
+acceleration is at the epochs it will fly through. That is the information
+boundary the rest of this section works against, and it is the one a real
+mission faces.
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{What the benchmark uses, and what replaces it.}
+  \label{tab:substitutions}
+  \begin{tabular}{@{}p{0.26\textwidth}p{0.34\textwidth}p{0.32\textwidth}@{}}
+    \toprule
+    Benchmark uses & Replaced by & Cost, charged to $B_+$ \\
+    \midrule
+    Reference field, pointwise & leading omitted bands (direction) plus the
+      measured degree-variance spectrum (amplitude) & one synthesis per
+      look-ahead probe point; measured \ph{pct} --- the dominant term \\
+    Reference arc & cheap pilot arc, $N=40$, loose tolerance & measured
+      \ph{pct} of the run's gravity work \\
+    Exact $\Phi$ & low-degree variational equations integrated on the pilot
+      arc, $\dot\Phi = \bigl[\begin{smallmatrix}\mathbf 0&\mathbf I\\
+      \mathbf G_{40}&\mathbf 0\end{smallmatrix}\bigr]\Phi$ & \ph{pct} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{The omitted acceleration has a direction, and tabulating it is not cheap}
+\label{sec:controller-direction}
+
+A tail criterion predicts $\lVert\Delta\mathbf a\rVert$. The coupling term of
+Eq.~\eqref{eq:coordinate-update} needs $\Delta\mathbf a$ itself. A controller
+supplied only with the magnitude can reach rung 3 of Table~\ref{tab:ladder} and
+no further, by construction.
+
+The direction varies on the model's own resolution scale. It is set by the
+leading omitted harmonics, whose half-wavelength at the spacecraft's radius is
+$\pi r/N$: about \ph{value}~km at $N=120$ and \ph{value}~km at $N=300$. A tabulation,
+interpolation or fitted surrogate over $(r,\phi,\lambda)$ that does not itself
+resolve that scale therefore cannot represent the direction, and one that does
+resolve it carries a number of degrees of freedom comparable to the omitted
+coefficients themselves, with the storage and evaluation cost that implies.
+This is a statement about resolution and cost, not an impossibility claim about
+any particular function class; Section~\ref{sec:ablations} measures it directly
+with a surrogate built for the purpose and reports what it retains and what it
+costs. \wpref{WP5}
+
+\subsection{Band probe}
+
+What is affordable is to evaluate the first few omitted bands and use their sum
+as the direction:
+
+\begin{equation}
+  \hat{\mathbf v}(t,N)
+  \;=\; -\,\gamma(N,r)\,\sum_{n=N+1}^{N+k}\mathbf a_n(t) ,
+  \label{eq:probe}
+\end{equation}
+
+with $\gamma$ the ratio of the full omitted tail to the probed bands. Direction
+comes from the probe; amplitude from $\gamma$.
+
+$\gamma$ is taken from the model's \emph{measured degree-variance spectrum},
+not from a fitted power law:
+
+\begin{equation}
+  \gamma(N,r) \;=\;
+  \Biggl[\frac{\sum_{n>N}\sigma_a^2(n;r)}
+              {\sum_{n=N+1}^{N+k}\sigma_a^2(n;r)}\Biggr]^{1/2} ,
+  \label{eq:gamma}
+\end{equation}
+
+with $\sigma_a(n;r)$ the per-degree acceleration RMS built from the coefficient
+degree variances $P_n$. The distinction matters because the lunar spectrum is
+not a single power law --- the previous paper measured a spectral slope of
+$2.13$ against an effective tail exponent of $1.76$ for the same field, and the
+gap is a property of the spectrum's shape --- so a power-law extrapolation of
+the tail carries a systematic error that a table of $P_n$ does not. And it
+costs nothing in deployability: $P_n$ is roughly \ph{n} numbers, a
+one-dimensional table.
+
+That split is worth naming, because it is the paper's information statement in
+its sharpest form. \textbf{What is cheap to carry is the spectrum; what is
+expensive is the texture.} The amplitude of the omitted tail is a
+one-dimensional function of degree and can simply be uploaded. Its direction is
+a field on the sphere at resolution $\pi r/N$ and cannot; it has to be probed.
+
+\paragraph{Cost, and why the cheap-looking figure is the wrong one.} At a point
+where the field is \emph{already} being evaluated to degree $N$, extending to
+$N{+}k$ costs $(N{+}k)^2-N^2\approx 2kN$ against $N^2$, that is $2k/N$ --- about
+5\% at $N=120$, $k=3$ --- because the associated Legendre recursion is
+incremental in degree and the probe inherits it.
+
+That figure does not apply here, and saying so is the honest form of the cost
+accounting. A look-ahead probe is taken at a point the integrator has \emph{not}
+evaluated, and the recursion for $P_{nm}$ at a new location must run from
+degree zero: obtaining band $n$ alone is not an $\mathcal{O}(n)$ operation in
+any standard synthesis. \textbf{Each look-ahead probe point therefore costs
+approximately one full synthesis}, not an increment on one.
+
+Two properties of the construction do reduce the cost, but both act
+\emph{within} a probe point rather than between them.
+
+First, the band stack is \emph{shared} across candidates. Evaluating the individual bands
+$\mathbf a_n$ once for $n$ up to $N_{\max}{+}k$ yields
+$\hat{\mathbf v}(t,N)$ for \emph{every} candidate $N\le N_{\max}$ by partial
+summation, at no further field evaluation. The candidates are therefore not
+independent probes but partial sums of one stack.
+
+Second, the candidate set is a window. The offline plan supplies a nominal
+degree for each decision interval; writing $j(q)$ for its position in the
+ordered candidate grid $\mathcal{N}=\{N_1<N_2<\dots\}$, the online decision
+searches only
+
+\begin{equation}
+  \mathcal{N}_q \;=\; \{\,N_{j(q)-\delta},\,\dots,\,N_{j(q)+\delta}\,\} ,
+  \label{eq:window}
+\end{equation}
+
+so that $\delta$ is a half-width in \emph{candidate-grid indices}, not in
+degrees. Fixing it that way keeps the controller's complexity ---
+$2\delta+1$ candidates per decision --- invariant when the grid is refined or
+coarsened; the induced span in degrees follows from the grid and is reported
+alongside the cost, since it is the span and not the index count that sets the
+band stack. The stack runs from $N_{j-\delta}{+}1$ to $N_{j+\delta}{+}k$, so
+the incremental cost is $\approx 2N(\Delta_{\mathrm{span}}+k)$ with
+$\Delta_{\mathrm{span}}=N_{j+\delta}-N_{j-\delta}$, rather than $2kN$.
+
+This is the plan/probe split made concrete: the plan sets the coarse
+allocation, which needs the budget and the sensitivity and is smooth; the probe
+corrects within a window, which needs the local texture. The window is a
+declared parameter, swept in Section~\ref{sec:ablations}, and it handicaps the
+controller relative to the benchmark --- which searches the full $\mathcal{N}$
+--- so the cost of the restriction appears in the capture fraction rather than
+being hidden.
+
+\paragraph{What the overhead actually is.} Covering a decision interval takes
+$n_{\mathrm{probe}}\approx\Delta t_{\mathrm{dec}}/\tau_{\mathrm{corr}}$ probe
+points, and the interval contains $n_{\mathrm{RHS}}\approx
+\Delta t_{\mathrm{dec}}\,r_{\mathrm{RHS}}$ right-hand-side calls, so the
+overhead is
+
+\begin{equation}
+  \frac{n_{\mathrm{probe}}}{n_{\mathrm{RHS}}}
+  \;\approx\; \frac{1}{\tau_{\mathrm{corr}}\;r_{\mathrm{RHS}}}
+  \;=\; \frac{N v}{\pi r\, r_{\mathrm{RHS}}} ,
+  \label{eq:probe-overhead}
+\end{equation}
+
+which is \emph{independent of the decision cadence}: probing twice as often
+over intervals twice as short buys nothing.
+
+Equation~\eqref{eq:probe-overhead} is a local rate, and the number that belongs
+in a budget is its arc integral,
+
+\begin{equation}
+  \frac{B_{\mathrm{probe}}}{B_{\mathrm{tot}}}
+  \;=\; \frac{1}{N_{\mathrm{RHS}}}\int_0^T \frac{\dd t}{\tau_{\mathrm{corr}}(t)}
+  \;=\; \frac{1}{N_{\mathrm{RHS}}}\int_0^T
+        \frac{N(t)\,v(t)}{\pi\,r(t)}\,\dd t ,
+  \label{eq:probe-overhead-arc}
+\end{equation}
+
+and the two are not interchangeable. Where $\tau_{\mathrm{corr}}$ is shortest
+--- at perilune, where the degree is highest --- the vehicle spends the least
+time, and the integrator's call rate is highest there as well, so both factors
+move together. Reading the local rate at perilune against an arc-averaged call
+rate overstates the cost substantially.
+
+Evaluated on the archived reference arcs, Eq.~\eqref{eq:probe-overhead-arc}
+gives \ph{pct} for a near-circular low orbit and \ph{pct} for the eccentric
+geometries of Table~\ref{tab:populations}, the eccentric cases being
+\emph{cheaper} because their long apolune stretches need almost no probing.
+Those estimates hold $r_{\mathrm{RHS}}$ fixed at its arc average and therefore
+still err high; the measured values are in
+Table~\ref{tab:probe-cost}. The probe remains the dominant term in $B_+$
+--- against \ph{pct} for the pilot arc and \ph{pct} for switching --- which is
+why it is reported as a curve rather than absorbed.
+
+Two consequences follow, and neither is a footnote. The overhead is reported as
+a \emph{measured curve} rather than a number: Table~\ref{tab:probe-cost} gives
+the effective direction accuracy $\kappa_{\mathrm{eff}}$ obtained by probing at
+$n_{\mathrm{probe}}$ points, averaged over the interval, against the cost that
+buys it. And a cheap endpoint of that curve is declared in advance:
+\Clite\ raises the degree of the interval's \emph{first} right-hand-side call
+--- a point the integrator evaluates anyway, so $2k/N$ genuinely applies ---
+and accepts that the direction is known only at the interval's start, for
+$\tau_{\mathrm{corr}}$ of its length. \wpref{WP5, WP16}
+
+\paragraph{Switching is not the expensive part.} A decision boundary makes the
+right-hand side discontinuous, and one might expect that to dominate. It does
+not. What the previous campaign measured is the aggregate: a radially binned
+schedule cost \ph{pct} extra right-hand-side calls over seven days. Converting
+that to a per-switch figure requires counting the bin crossings, which we do
+from the archived degree histories rather than estimating; on \ph{n} crossings
+it is \ph{value} extra calls per switch. At
+$\Delta t_{\mathrm{dec}}=\ph{value}$~s there are \ph{n} boundaries per arc, so
+the switching term is \ph{pct} --- roughly an order of magnitude below the
+probe.
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{The cost--accuracy curve of the online probe, measured rather than
+  counted. $\kappa_{\mathrm{eff}}$ is the direction accuracy averaged over the
+  decision interval when the interval is probed at $n_{\mathrm{probe}}$ points;
+  the cost column is the share of $B_{\mathrm{tot}}$ the probe consumes, which
+  Eq.~\eqref{eq:matching} subtracts from the controller's gravity budget. The
+  first row is \Clite, whose single probe is co-located with a right-hand-side
+  call and therefore costs an increment rather than a synthesis.
+  \ph{fill from WP5, WP16}}
+  \label{tab:probe-cost}
+  \begin{tabular}{@{}lccccc@{}}
+    \toprule
+    Variant & $n_{\mathrm{probe}}$ & $\delta$ (idx) & $\Delta_{\mathrm{span}}$ (deg)
+      & $\kappa_{\mathrm{eff}}$ & cost, share of $B_{\mathrm{tot}}$ \\
+    \midrule
+    \Clite & 1 (co-located) & \ph{n} & \ph{n} & \ph{value} & \ph{pct} \\
+    \Cplan & \ph{n} & \ph{n} & \ph{n} & \ph{value} & \ph{pct} \\
+    \Cplan & \ph{n} & \ph{n} & \ph{n} & \ph{value} & \ph{pct} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[!tbp]
+  \centering
+  \ph{figures/fig\_oa\_probe.pdf}
+  \caption{Probe direction accuracy $\kappa=\cos\angle(\hat{\mathbf v},
+  \Delta\mathbf a)$ against probe depth $k$, truncation degree $N$ and
+  altitude. The dashed line is the level below which the coupling term cannot
+  be carried (Section~\ref{sec:controller-limits}).}
+  \label{fig:probe}
+\end{figure}
+
+\ph{one paragraph} Median $\kappa$ is \ph{value} at $k=1$ and \ph{value} at
+$k=3$; it \ph{degrades/holds} with altitude and \ph{degrades/holds} with $N$.
+The refresh interval required to keep $\kappa$ above \ph{value} is
+\ph{value}~s, consistent with Eq.~\eqref{eq:decorrelation}.
+
+\paragraph{What $\kappa$ does and does not measure.} It is tempting to read
+$\kappa$ as the fraction of the coupling term the probe retains. It is not,
+and the difference matters enough to state. The term is
+$2\,\mathbf u_i(N)^{\top}\mathbf c_i$ with
+$\mathbf u_i=\Phi\mathbf B\,\Delta\mathbf a\,\Delta t_i$, so writing
+$\mathbf z=(\Phi\mathbf B)^{\top}\mathbf c_i$ the retained fraction is
+$\langle\hat{\mathbf v},\mathbf z\rangle/
+ \langle\Delta\mathbf a,\mathbf z\rangle$: it depends on the angles the true
+and estimated defects make with $\mathbf z$, not on the angle between them,
+because $\Phi\mathbf B$ does not preserve angles. Where
+$\Delta\mathbf a\perp\mathbf z$ the true contribution vanishes and any probe
+error produces a spurious one.
+
+$\kappa=1$ still forces the retained fraction to one, and a low $\kappa$ still
+destroys it, so $\kappa$ is a leading indicator rather than the quantity
+itself --- and it has the practical advantage of being measurable without a
+schedule and without propagating. We therefore report both: $\kappa$ as the
+leading indicator, and the retained fraction, computed with $\mathbf c_i$ from
+the \Asens\ schedule, alongside it. \emph{Both are diagnostics.} Neither
+carries a stopping rule; the deployability decision is the capture fraction of
+Section~\ref{sec:campaign}, which measures the thing itself rather than a
+proxy for it. \wpref{WP5}
+
+\subsection{Planning: forward--backward allocation}
+\label{sec:controller-ifbda}
+
+The coupling term $\mathbf c_i$ of Eq.~\eqref{eq:cross-term} depends on the
+degrees chosen at \emph{every other} epoch. A single backward sweep of an
+adjoint cannot supply it, because there is no schedule yet to sweep against.
+The controller therefore iterates.
+
+\begin{algorithm}[!htbp]
+\caption{Forward--backward degree allocation on a pilot arc}
+\label{alg:ifbda}
+\begin{algorithmic}[1]
+\Require pilot arc; low-degree $\Phi$; tail model; budget $B$
+\State $N^{(0)} \gets$ separable sensitivity-weighted schedule (\Asens\ form)
+\For{$j = 1 \dots J$}
+  \State \textbf{forward:} accumulate $\hat{\mathbf u}_i$ from
+    $\hat{\mathbf v}(t_i,N^{(j-1)}_i)$; form prefix sums
+  \State \textbf{backward:} form the suffix blocks $\mathbf A_i$ and the cross
+    terms $\mathbf c_i$
+  \State \textbf{update:} $N^{(j)}$ by Eq.~\eqref{eq:coordinate-update};
+    bisect $\lambda$ to the budget
+\EndFor
+\State \Return cancellation target $\mathbf c$, diagonal kernel $\mathbf K_i$,
+  multiplier $\lambda$
+\end{algorithmic}
+\end{algorithm}
+
+$J$ is a free parameter and is swept in Section~\ref{sec:ablations};
+\ph{value} iterations suffice on \ph{n} of \ph{n} panel orbits.
+
+\subsection{Probing forward, not backward}
+\label{sec:controller-causality}
+
+A decision interval is $\Delta t_{\mathrm{dec}}\approx\ph{value}$~s long and the
+omitted direction decorrelates in $\Delta t_{\mathrm{probe}}\approx\ph{value}$~s.
+A rule that accumulated probes taken \emph{inside} an interval and applied them
+at the \emph{next} boundary would therefore select a degree from a direction
+that has already decorrelated --- exactly the failure the resolution-scale
+argument of Section~\ref{sec:controller-direction} predicts. The controller
+does the opposite: at each boundary it probes \emph{ahead}, over the interval it
+is about to commit to.
+
+That is legitimate, and the reason is that two different coherence questions are
+involved and they have different answers.
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Two coherence scales. The long-horizon failure is what forces the
+  plan/probe split of Section~\ref{sec:controller-split}; the short-horizon
+  success is what makes forward probing admissible.}
+  \label{tab:coherence}
+  \begin{tabular}{@{}p{0.24\textwidth}p{0.30\textwidth}p{0.36\textwidth}@{}}
+    \toprule
+    Horizon & State prediction error & Against $\pi r/N$ \\
+    \midrule
+    One decision interval,
+    $\Delta t_{\mathrm{dec}}$ & the vehicle's own short-arc prediction,
+      \ph{value}~m & far below; forward probing valid \\
+    \addlinespace
+    Whole arc, pilot against
+    flown & \ph{value}~km after $T_{\mathrm{coh}}$ & far above; a pre-computed
+      $\hat{\mathbf v}$ is invalid \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{What predicts the probe locations.} At $t_q$ the degree for the
+upcoming interval has not been chosen, so the integrator has not yet advanced
+through it, and the probe points have to come from somewhere else. Two facts
+make this a small requirement rather than a circularity.
+
+First, the probe locations barely depend on the degree at all. Two candidate
+degrees differ in acceleration by the difference of their truncation defects,
+so over one interval they separate by at most
+$\tfrac12\lVert\Delta\mathbf a\rVert\Delta t_{\mathrm{dec}}^2$, which for
+$\lVert\Delta\mathbf a\rVert\sim\ph{value}$ and
+$\Delta t_{\mathrm{dec}}=\ph{value}$~s is \ph{value}~mm. Against $\pi r/N$ that
+is \ph{value} orders of magnitude below the scale on which the direction
+changes. The predictor therefore does not need to know $N_q$, which is what
+breaks the circle.
+
+Second, what the predictor must achieve is a position accurate to well inside
+$\pi r/N$ --- kilometres --- not an accurate trajectory. The controller uses a
+two-body propagation of the current state over the interval, which requires no
+field evaluation and is analytic. Its error is dominated by the perturbing
+acceleration it omits, $\tfrac12\lVert\mathbf a_{\mathrm{pert}}\rVert
+\Delta t_{\mathrm{dec}}^2\approx\ph{value}$~m, again far inside the tolerance.
+Its cost is \ph{value} and enters $B_+$ with the rest.
+
+\code{abl-predictor} replaces it with a low-degree micro-propagation at
+$N_{\mathrm{plan}}$ and reports the change in $\kappa$ and in the final error,
+so the choice is measured rather than assumed \wpref{WP5}.
+
+The controller therefore evaluates the shared band stack at
+$n_{\mathrm{probe}}=\lceil\Delta t_{\mathrm{dec}}/\Delta t_{\mathrm{probe}}\rceil$
+points spanning the upcoming interval, along that predicted path, and sums
+their transported contributions to obtain each candidate's
+$\sum_{i\in I_q}\mathbf u_i(N)$. Nothing from before the boundary is reused for
+the direction.
+
+\begin{algorithm}[!htbp]
+\caption{Online decision at boundary $t_q$}
+\label{alg:online}
+\begin{algorithmic}[1]
+\Require plan $(\mathbf c,\mathbf K_i,\lambda,N_{\mathrm{plan}})$; window half-width
+  $\delta$ (in candidate-grid indices); depth $k$; spent work $W$
+\State predict the state at $n_{\mathrm{probe}}$ points spanning
+  $[t_q,t_{q+1})$ by two-body propagation of the current state
+  \Comment{no field evaluation; degree-independent}
+\State evaluate bands $N_{\mathrm{plan}}(t_q)-\delta+1 \dots
+  N_{\mathrm{plan}}(t_q)+\delta+k$ at those points \Comment{one shared stack}
+\For{$N \in \mathcal{N}_q$}
+  \State $\hat{\mathbf v}(t_i,N) \gets -\gamma(N,r_i)\sum_{n=N+1}^{N+k}
+    \mathbf a_n(t_i)$ \Comment{partial sums, no new evaluation}
+\EndFor
+\State $N_q \gets$ Eq.~\eqref{eq:coordinate-update} over $\mathcal{N}_q$ with
+  $\mathbf c$ from the plan
+\State $\lambda \gets \lambda + \mathrm{gain}\cdot(W - W_{\mathrm{sched}}(t_q))$
+  \Comment{budget feedback, Section~\ref{sec:controller-feedback}}
+\State hold $N_q$ over $[t_q,t_{q+1})$
+\end{algorithmic}
+\end{algorithm}
+
+Holding the degree across the interval also gives the controller exactly the
+switching freedom the benchmark of Section~\ref{sec:problem} has, so the two
+differ in information and not in resolution.
+
+\dnote{If the decision grid has to shrink toward
+$\Delta t_{\mathrm{probe}}$ for the coupling term to be worth anything, say so:
+that is a finding about the controller's required cadence, and it should be
+reported with the integrator cost it provokes rather than hidden by choosing
+$\Delta t_{\mathrm{dec}}$ after the fact. The sweep in
+Section~\ref{sec:ablations} is what decides this.}
+
+\subsection{Why the plan and the probe are split}
+\label{sec:controller-split}
+
+Algorithm~\ref{alg:ifbda} runs on a pilot arc, which is not the arc that will
+be flown. Whether that matters depends on which quantity is being carried
+across, and the two behave differently.
+
+The local omitted vector $\hat{\mathbf v}$ is field texture and decorrelates
+over $\pi r/N$. A pilot arc's position error exceeds that scale after
+$T_{\mathrm{coh}}=\ph{value}$, measured in Section~\ref{sec:controller-limits},
+which is \ph{fraction} of the arc --- the long-horizon row of
+Table~\ref{tab:coherence}. A schedule that fixed the probe at plan time would
+therefore be using a direction that is no longer the right one, and the
+controller does not do that: $\hat{\mathbf v}$ is evaluated online, at the
+vehicle's own state, one interval at a time
+(Section~\ref{sec:controller-causality}).
+
+The cancellation target $\mathbf c$ is an accumulated quantity. The previous
+paper measured the defect to be coherent rather than incoherent --- growth
+exponents of \ph{range} against the $t^{3/2}$ of a zero-mean impulse null ---
+so the accumulated displacement is dominated by a sustained trend rather than
+by local texture, and it is stable between the pilot and the reference arc to
+\ph{value} \wpref{WP6}. The same is true of the sensitivity weight and of the
+multiplier.
+
+The controller is accordingly split:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+  \toprule
+  Computed offline, on the pilot arc & $\mathbf c$, $\mathbf K_i$, $\lambda_0$,
+    $N_{\mathrm{plan}}$, \emph{indexed by orbital phase} \\
+  Computed online, ahead of each boundary & $\hat{\mathbf v}$ by
+    Eq.~\eqref{eq:probe}, hence $N_q$ within $\pm\delta$ of the plan \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+and neither half reads the reference field or the reference arc.
+
+\paragraph{The plan is indexed by phase, not by time.} This is forced by the
+same coherence argument, applied to the smooth quantities rather than to the
+texture. A loose $N=40$ pilot arc drifts along track by of order \ph{value}~km
+over seven days, which at low-lunar-orbit speed is a \emph{timing} offset of
+\ph{value}~s. A perilune passage lasts a few minutes. Since $\mathbf c$ and
+$\mathbf K_i$ are dominated by exactly those passages, a plan indexed by
+absolute time would
+apply the perilune cancellation target before or after the perilune it was
+computed for --- an error of order the thing being corrected.
+
+Indexing by (revolution number, phase within revolution) removes the
+sensitivity: the vehicle knows its own phase, and a \ph{value}~s offset is
+\ph{value} of a revolution. It is not a return to a single-valued function of
+radius, because the revolution index carries the remaining horizon; that is
+what distinguishes the plan from the radial rules of
+Table~\ref{tab:ladder}. \wpref{WP6, WP9}
+
+\subsection{Budget feedback}
+\label{sec:controller-feedback}
+
+A per-call budget does not survive contact with an adaptive integrator: the
+solver takes short steps where a concentrated schedule runs its highest
+degrees, so nominal equality becomes a realized overspend --- a median
+\ph{pct} in the previous campaign, and a factor of \ph{value} at half the
+budget. \Cfb\ carries the spent work as a state, accumulating $N^2$ over the
+right-hand-side calls actually made and adjusting $\lambda$ so that the
+declared budget is met end to end rather than per call. \ph{one paragraph on
+the update law and its gain.} The realized-to-nominal ratio it achieves is
+\ph{value} against \ph{value} for the open-loop schedule.
+
+\subsection{Where the controller is not the benchmark}
+\label{sec:controller-limits}
+
+Four separations are measured rather than argued, and each is an ablation in
+Section~\ref{sec:ablations}: the tail amplitude in place of the true defect
+magnitude; the probe direction in place of the true direction; the pilot arc in
+place of the reference arc; and the low-degree $\Phi$ in place of the exact
+one. \ph{one paragraph summarizing which dominates.}
+
+\dnote{This is where a low $\kappa$ would first show. It is a warning and not a
+stopping rule --- $\kappa$ is not the retained fraction, so gating on it would
+risk an early false negative --- but if the capture fraction then confirms it,
+the coupling term cannot be carried, \Cplan\ collapses onto rung 3, and the
+paper's constructive claim reduces to a sensitivity-weighted controller ---
+which is still new relative to the previous work, but is a different and
+smaller claim. Draft that version of this section before the number arrives.}

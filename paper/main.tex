@@ -1,0 +1,100 @@
+\input{preamble}
+
+\begin{document}
+
+\thispagestyle{plain}
+
+\begin{center}
+  {\LARGE\bfseries \papertitle\par}
+  \vspace{14pt}
+  {\large Ayberk Demirkanat\par}
+  \vspace{4pt}
+  {\small\itshape Department of Astronautical Engineering, Istanbul
+  Technical University, Istanbul, T\"urkiye\par}
+  \vspace{2pt}
+  {\small \code{demirkanat21@itu.edu.tr}\par}
+\end{center}
+
+\vspace{10pt}
+\begin{center}
+\begin{minipage}{0.92\textwidth}
+  \small
+  \textbf{Abstract.}
+  A spherical-harmonic evaluation costs $\mathcal{O}(N^2)$, so choosing the
+  truncation degree along an orbit is a resource-allocation problem. Allocating
+  from the instantaneous force defect is known to order the arcs wrongly: a
+  trajectory error is a signed integral of the defect against the
+  state-transition matrix, and a defect norm is a sum of magnitudes. Writing
+  the objective in the form the dynamics impose makes the allocation problem
+  \emph{non-separable} in the per-epoch degrees, which is why the standard
+  Lagrangian treatment of a budgeted separable allocation does not apply. We
+  show that the discretized objective is a quadratic form whose coupling matrix
+  depends on the epoch pair only through $\max(i,k)$, so a full sweep over the
+  $K_{\mathrm{dec}}$ decision intervals, evaluated from $M$ accumulation
+  samples over $\lvert\mathcal{N}\rvert$ candidate degrees, costs
+  $\mathcal{O}(M\lvert\mathcal{N}\rvert)$, and a Frank--Wolfe bound on the
+  convex-hull relaxation certifies the gap; the resulting allocation is
+  obtained without propagating anything, and every policy compared switches on
+  one common decision grid so that the benchmark's margin is information rather
+  than resolution. On \ph{n} orbits of \ph{n} independent coverage designs
+  the certified benchmark is a median factor of \ph{value} better than the
+  equal-budget constant degree. The three criteria the paper separates are
+  three readings of one trajectory kernel --- ignore it, retain its local
+  diagonal, retain the full cross-epoch coupling --- so the question of what
+  sensitivity weighting misses becomes the question of how much lives off the
+  diagonal, and the answer is \ph{pct}.
+  Deploying this requires the \emph{direction} of the omitted acceleration, not
+  only its magnitude, and that direction varies on the field's own resolution
+  scale $\pi r/N$, so a surrogate coarser than that scale cannot represent it
+  and one finer carries as many degrees of freedom as the omitted coefficients.
+  We estimate it instead from the leading omitted degree bands, probing forward
+  along the vehicle's own short-horizon prediction, and complete its amplitude
+  from the model's measured degree-variance spectrum. That split is the paper's
+  information statement: the spectrum is one-dimensional and costs nothing to
+  upload, while the texture is a field at resolution $\pi r/N$ and has to be
+  measured in flight. Covering a decision interval costs a measured \ph{pct} of
+  the gravity budget --- the controller's dominant overhead, charged to it in
+  full. The
+  resulting controller plans a cancellation target offline on a cheap pilot arc
+  through a forward--backward iteration and probes forward, along its own
+  short-horizon state prediction, before committing each decision interval. Held to equal \emph{realized}
+  quadratic work including its own overhead, it \ph{outcome} the constant
+  degree on \ph{n} of \ph{n} resolved comparisons across \ph{n} populations.
+  All conclusions are model-relative and bounded by the tested designs.
+
+  \vspace{6pt}
+  \textbf{Keywords:} lunar gravity field; spherical harmonics; truncation
+  degree; degree allocation; state-transition matrix; orbit propagation; GRAIL
+\end{minipage}
+\end{center}
+\vspace{6pt}
+
+\dnote{The abstract is written to the \textcolor{blue!60!black}{green} outcome
+band of \code{../OUTCOMES.md}. Three of its clauses invert if the campaign
+lands in the amber or orange band, and the alternative wordings are drafted at
+the head of \code{chapters/11\_conclusion.tex} so that the paper is not
+rewritten under time pressure.}
+
+\input{chapters/00_nomenclature}
+\input{chapters/01_introduction}
+\input{chapters/02_related}
+\input{chapters/03_problem}
+\input{chapters/04_algorithm}
+\input{chapters/05_setup}
+\input{chapters/06_benchmark}
+\input{chapters/07_controller}
+\input{chapters/08_campaign}
+\input{chapters/09_ablations}
+\input{chapters/10_discussion}
+\input{chapters/11_conclusion}
+
+\section*{Acknowledgments}
+\ph{to be written}
+
+\section*{Data availability}
+\ph{archive DOI, manifest digest chain, pre-registration hashes}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

@@ -1,0 +1,164 @@
+\section{How much is attainable, and where it comes from}
+\label{sec:benchmark}
+
+This section answers RQ1 and RQ2. Nothing in it is propagated: every quantity
+is computed from the tabulated defect and the archived state-transition matrix,
+so the comparison is free of integrator noise and of the step-size effects the
+previous campaign had to control. What it therefore establishes is a
+first-order statement about a fixed reference trajectory;
+Section~\ref{sec:campaign} tests whether the propagated arcs agree.
+
+\paragraph{Predicted error, not measured error.} Every error in this section is
+the first-order prediction $\hat E=\sqrt{J}$ of Eq.~\eqref{eq:quadratic-form},
+and every ratio is written $\hat\rho$. The propagated quantities $E$ and $\rho$
+appear only from Section~\ref{sec:campaign} onward. The two are kept
+typographically distinct throughout because they answer different questions and
+are produced at different stages: no hypothesis stated on $\hat E$ is reported
+as though it had been tested on $E$. Where the resolution rule is invoked here
+it uses each orbit's archived numerical envelope, which is external to this
+paper and pre-existing, since no propagation of this campaign has yet occurred
+to supply one.
+
+\subsection{The two separable allocations}
+\label{sec:benchmark-sens}
+
+Two of the four rungs below are separable and are stated here once, because
+the Frank--Wolfe subproblem of Section~\ref{sec:algorithm-certificate} has the
+same structure. Both are per-interval minimizations with a single multiplier
+$\lambda$ bisected to the budget:
+
+\begin{equation}
+  \Aforce:\;\;
+  \argmin_{N\in\mathcal{N}}\Bigl[\textstyle\sum_{i\in I_q}
+    \lVert\Delta\mathbf a(t_i,N)\rVert^2\Delta t_i
+    +\lambda W_q N^2\Bigr],
+  \qquad
+  \Asens:\;\;
+  \argmin_{N\in\mathcal{N}}\Bigl[\textstyle\sum_{i\in I_q}
+    \Delta t_i\,\Delta\mathbf a(t_i,N)^{\top}\mathbf K_i\,
+    \Delta\mathbf a(t_i,N)
+    +\lambda W_q N^2\Bigr].
+  \label{eq:separable}
+\end{equation}
+
+\Aforce\ is the force-level benchmark of the previous paper: it never sees
+$\Phi$ at all. \Asens\ is the natural sensitivity-weighted repair, and it is
+worth being precise about where its weight comes from, because two wrong
+answers are close at hand. Borrowing a scalar such as
+$\lVert\Phi(T,t)\mathbf B\rVert^2$ from the terminal-state proxy would be an
+arbitrary import, and matched to the wrong metric besides. Taking the discrete
+diagonal $\mathbf u_i^{\top}\mathbf Q_{ii}\mathbf u_i$ literally would make the
+criterion depend on the accumulation resolution, for the reason given in
+Section~\ref{sec:problem-discretization}. The weight is instead the local
+sensitivity kernel $\mathbf K_i$ of Eq.~\eqref{eq:local-sensitivity} --- the
+objective's own coupling evaluated on its diagonal, grid-invariant, and matched
+to the arc-RMS metric rather than to a terminal one.
+
+The ladder is therefore a decomposition of one trajectory kernel and not a
+comparison of three unrelated criteria: \Aforce\ ignores it, \Asens\ retains
+its local diagonal $\mathbf K_i$, \Asign\ retains the full cross-epoch
+coupling. RQ2 reduces to a single question --- how
+much of the attainable gain lives off the diagonal --- and $G_{\mathrm{sens}}$
+and $G_{\mathrm{sign}}$ below measure the two steps of that decomposition.
+
+\subsection{The ladder}
+
+Four allocations are compared at the same budget, each carrying one more piece
+of the dynamics than the last.
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Allocation ladder at $\beta=1$. Entries are
+  $\hat\rho(\Fop,\text{policy})=\hat E_{\Fop}/\hat E_{\text{policy}}$ on the
+  first-order prediction, medians of per-orbit ratios, so values above one
+  favour the policy. All four are evaluated on the same reference trajectories
+  and the same tabulated defect, and none is propagated.
+  \ph{fill from WP2, WP3}}
+  \label{tab:ladder}
+  \begin{tabular}{@{}llcccc@{}}
+    \toprule
+    & Allocation & Information used & A & B & C \\
+    \midrule
+    1 & \Rint\  & radius & \ph{value} & \ph{value} & \ph{value} \\
+    2 & \Aforce & + reference field, pointwise & \ph{value} & \ph{value} & \ph{value} \\
+    3 & \Asens  & + diagonal kernel $\mathbf K_i$ & \ph{value} & \ph{value} & \ph{value} \\
+    4 & \Asign  & + signed coupling $\mathbf Q$ & \ph{value} & \ph{value} & \ph{value} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{RQ1 --- the attainable gain.} \ph{one paragraph} \Asign\ sits a
+median \ph{value} above \Fop\ and \ph{value} above \Rint, the strongest
+deployable schedule previously available. \ph{state whether the gain clears the
+numerical envelope on how many orbits, and name the orbits where it does not.}
+
+\dnote{Gate G1 of \code{../ROADMAP.md} is decided here. If
+$\hat\rho(\Rint,\Asign)<1.5$ at the design median, this section becomes the
+paper's principal result in the negative direction and
+Sections~\ref{sec:controller} and~\ref{sec:campaign} contract sharply.}
+
+\paragraph{RQ2 --- weight against sign.} The two increments are reported
+separately because they are different claims. Raw error differences are not
+comparable across orbits of different scale, so each increment is a log ratio:
+
+\begin{equation}
+  G_{\mathrm{sens}} = \log\frac{\hat E_{\Aforce}}{\hat E_{\Asens}},
+  \qquad
+  G_{\mathrm{sign}} = \log\frac{\hat E_{\Asens}}{\hat E_{\Asign}} ,
+  \label{eq:increments}
+\end{equation}
+
+the first being what correcting the weighting buys and the second what the
+coupling buys on top of it. \ph{one paragraph with the two medians and their
+ratio.} The previous paper predicted that reweighting alone would not close the
+gap; \ph{state whether that is confirmed, and by how much.}
+
+\begin{figure}[!tbp]
+  \centering
+  \ph{figures/fig\_oa\_ladder.pdf}
+  \caption{The allocation ladder, one point per orbit, designs pooled. Bars are
+  medians. Rungs 1--2 use magnitudes only; rung 3 adds the sensitivity weight;
+  rung 4 adds the signed coupling.}
+  \label{fig:ladder}
+\end{figure}
+
+\subsection{What the schedules look like}
+
+\ph{one paragraph plus figure} The signed allocation is not a monotone function
+of radius, which is the point: at equal budget it \ph{describe the qualitative
+structure --- where it spends relative to \Asens, and whether the departure is
+phase-locked}. Reporting this matters because it is the part a deployable rule
+has to imitate.
+
+\begin{figure}[!tbp]
+  \centering
+  \ph{figures/fig\_oa\_schedules.pdf}
+  \caption{Degree histories at $\beta=1$ on a representative orbit:
+  \Fop, \Rint, \Asens\ and \Asign. The lower panel shows the accumulated
+  displacement each produces.}
+  \label{fig:schedules}
+\end{figure}
+
+\subsection{Certificate}
+
+Table~\ref{tab:certificate} gives the certified gap. \ph{one paragraph}
+\ph{State the median gap, the worst orbit, and therefore which of the two names
+of Section~\ref{sec:algorithm-certificate} the paper uses.} Where the gap is
+wide the reported ratios are conservative: the true optimum can only be better
+than the schedule found, so the advantage over \Fop\ is understated and the
+capture fraction of Section~\ref{sec:controller} overstated.
+
+\subsection{Sensitivity of the benchmark to its own construction}
+
+Three properties of the construction were audited and none moves a direction
+reported above. \wpref{WP3, WP4}
+
+\begin{itemize}
+  \item \textbf{Start dependence.} Table~\ref{tab:starts}; the spread across
+    \ph{n} starts is \ph{value}.
+  \item \textbf{Accumulation grid.} Section~\ref{sec:setup-grids}; the schedule
+    changes by \ph{value} between \ph{value}~s and \ph{value}~s.
+  \item \textbf{Degree set.} \ph{one sentence} A coarser $\mathcal{N}$ can only
+    make the benchmark worse, so the measured gap to the policies is
+    conservative in that direction too.
+\end{itemize}

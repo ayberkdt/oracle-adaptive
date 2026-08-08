@@ -1,0 +1,315 @@
+\section{The allocation problem}
+\label{sec:problem}
+
+\subsection{Objective}
+
+Let $\mathbf x_{\mathrm{ref}}(t)$ be a reference trajectory on $[0,T]$ and let
+
+\begin{equation}
+  \Delta\mathbf a(t,N) \;=\;
+  \mathbf a_N\bigl(\mathbf x_{\mathrm{ref}}(t)\bigr)
+  -\mathbf a_{\mathrm{ref}}\bigl(\mathbf x_{\mathrm{ref}}(t)\bigr)
+  \label{eq:defect}
+\end{equation}
+
+be the truncation acceleration defect of degree $N$ measured along it. To first
+order the induced \emph{state} perturbation is
+$\delta\mathbf x(t)=\int_0^t \Phi(t,\tau)\,\mathbf B\,\Delta\mathbf a(\tau)\,\dd\tau
+\in\mathbb{R}^6$, with $\Phi$ the reference state-transition matrix and
+$\mathbf B$ mapping acceleration into the velocity block
+\citep[Ch.~4]{tapley2004statistical}. The metric this paper reports is a
+\emph{position} RMS, so the position block must be selected before the norm is
+taken. With $\mathbf H_r=[\,\mathbf I_3\;\;\mathbf 0\,]$,
+
+\begin{equation}
+  E^2 \;=\; \frac{1}{T}\int_0^{T}
+  \Bigl\lVert \mathbf H_r\!\int_0^{t}\Phi(t,\tau)\,\mathbf B\,
+  \Delta\mathbf a(\tau)\,\dd\tau \Bigr\rVert^2 \dd t .
+  \label{eq:objective}
+\end{equation}
+
+Taking the norm of the full six-vector would mix position and velocity units
+and would not be the quantity the campaign measures; $\mathbf H_r$ is carried
+explicitly through every expression below for that reason.
+
+The decision variable is the degree history $N(\cdot)$, and the cost is the
+quadratic work $\int N(t)^2\,\dd t$ it implies.
+
+\subsection{Why the separable treatments do not apply}
+
+Equation~\eqref{eq:objective} takes the norm \emph{after} the integral, and
+that is the whole of the difficulty. Once the objective is discretized, Section~\ref{sec:problem-discretization}
+puts it in the form $\mathbf u^{\top}\mathbf Q\,\mathbf u$, and the three
+functionals separating this paper from its predecessor are then literally three
+readings of \emph{one} matrix:
+
+\begin{equation}
+  \underbrace{\textstyle\sum_i \lVert\Delta\mathbf a_i\rVert^2\Delta t_i}
+             _{\text{(i) defect norm: no }\mathbf Q}
+  \qquad
+  \underbrace{\textstyle\sum_i \Delta t_i\,
+     \Delta\mathbf a_i^{\top}\mathbf K_i\,\Delta\mathbf a_i}
+             _{\text{(ii) diagonal kernel}}
+  \qquad
+  \underbrace{\mathbf u^{\top}\mathbf Q\,\mathbf u}
+             _{\text{(iii) all of }\mathbf Q}
+  \label{eq:three-functionals}
+\end{equation}
+
+Functionals (i) and (ii) are separable in the per-epoch degrees --- (ii)
+because a block-diagonal quadratic form decouples --- so a single multiplier
+decides each epoch independently \citep{everett1963generalized}. Functional
+(iii) is not: changing $N_i$ changes the sum against which every other epoch's
+contribution is measured.
+
+Writing the ladder this way removes an arbitrary choice: the sensitivity weight
+in (ii) is not borrowed from anywhere, it is the objective's own coupling
+evaluated on its diagonal. \emph{RQ2 is therefore exactly: how much of the gain
+lives off the diagonal?} The previous paper's finding --- that a signed,
+remaining-horizon-weighted statistic still ranks two policies the wrong way
+round on \ph{n} of \ph{n} orbits --- says the answer is not zero.
+
+\paragraph{The diagonal restriction has to be taken in the kernel, not in the
+matrix.} Written continuously, $J$ is a double integral against a kernel,
+$J=\int\!\!\int\Delta\mathbf a(\tau)^{\top}\mathbf K(\tau,\sigma)
+\Delta\mathbf a(\sigma)\,\dd\tau\,\dd\sigma$, and the set $\tau=\sigma$ has
+measure zero. ``Dropping the off-diagonal blocks'' of the discrete
+$\mathbf Q$ is therefore not a definition one can take literally: since
+$\mathbf u_i\propto\Delta t_i$, the raw diagonal term
+$\mathbf u_i^{\top}\mathbf Q_{ii}\mathbf u_i$ carries $\Delta t_i^2$ and shrinks
+as the grid is refined, so a criterion built on it would depend on the
+accumulation resolution --- which, with the refined grid of
+Section~\ref{sec:problem-grids}, is not even uniform along the arc.
+
+What is well defined is the kernel \emph{on} the diagonal, a local sensitivity
+$\mathbf K(t,t)$:
+
+\begin{equation}
+  \mathbf K(t,t) \;=\; \frac{1}{T}\int_t^T
+  \mathbf B^{\top}\Phi(\tau,t)^{\top}\mathbf H_r^{\top}\mathbf H_r\,
+  \Phi(\tau,t)\,\mathbf B\;\dd\tau ,
+  \qquad
+  \mathbf K_i \;=\; \frac{1}{T}\,\mathbf B^{\top}\Phi(t_0,t_i)^{\top}
+  \mathbf A_i\,\Phi(t_0,t_i)\,\mathbf B ,
+  \label{eq:local-sensitivity}
+\end{equation}
+
+the discrete form following from Eq.~\eqref{eq:Q-structure} and the cocycle
+property. Functional (ii) is then $\sum_i\Delta t_i\,
+\Delta\mathbf a_i^{\top}\mathbf K_i\Delta\mathbf a_i$, one power of $\Delta t$
+per term like (i), and it converges to a physical limit under refinement.
+Equivalently it is $\sum_i \mathbf u_i^{\top}\mathbf Q_{ii}\mathbf u_i/\Delta t_i$
+--- the raw diagonal with the extra $\Delta t$ removed.
+
+Nothing else moves. $\mathbf K_i$ is built from the same suffix sequence
+$\mathbf A_i$, so it costs nothing extra; and (i) and (iii) were already
+grid-consistent, (iii) because a double sum over $\mathbf u$ carries
+$\Delta t_i\Delta t_k$ and is a genuine double integral. The derivation of
+$\mathbf Q$, the prefix--suffix structure and the Frank--Wolfe certificate are
+untouched.
+
+\subsection{Discretization}
+\label{sec:problem-discretization}
+
+Fix an accumulation grid $t_1,\dots,t_M$ with local steps $\Delta t_i$ --- not
+assumed uniform, for the reason given in Section~\ref{sec:problem-grids} ---
+let $\mathbf H_r=[\,\mathbf I_3\;\;\mathbf 0\,]$ select the position block, and
+write the transported epoch contribution and its partial sums as
+
+\begin{equation}
+  \mathbf u_i(N) = \Phi(t_0,t_i)\,\mathbf B\,\Delta\mathbf a(t_i,N)\,
+  \Delta t_i ,
+  \qquad
+  \mathbf S_j = \sum_{i\le j}\mathbf u_i,
+  \qquad
+  \delta\mathbf r(t_j) = \mathbf H_r\,\Phi(t_j,t_0)\,\mathbf S_j ,
+  \label{eq:u-and-S}
+\end{equation}
+
+which uses only the cocycle property $\Phi(t_j,t_i)=\Phi(t_j,t_0)\Phi(t_0,t_i)$.
+The outer integral of Eq.~\eqref{eq:objective} is likewise a quadrature, with
+weights $\omega_j\ge0$ summing to $T$, so the discretized objective is a quadratic form
+in the stacked vector $\mathbf u=(\mathbf u_1,\dots,\mathbf u_M)$,
+
+\begin{equation}
+  J(\mathbf u) \;=\; \frac{1}{T}\sum_{j} \omega_j\,
+  \mathbf S_j^{\top}\mathbf M_j\mathbf S_j
+  \;=\; \mathbf u^{\top}\mathbf Q\,\mathbf u ,
+  \qquad
+  \mathbf M_j \;=\; \Phi(t_j,t_0)^{\top}\mathbf H_r^{\top}\mathbf H_r\,
+  \Phi(t_j,t_0) ,
+  \label{eq:quadratic-form}
+\end{equation}
+
+so that each $\mathbf M_j$ is a symmetric positive-semidefinite $6\times6$
+block and no dimensional ambiguity is left in the notation. On a uniform grid
+$\omega_j=\Delta t$ and $T=M\Delta t$, and Eq.~\eqref{eq:quadratic-form} reduces to
+the unweighted average $M^{-1}\sum_j\mathbf S_j^{\top}\mathbf M_j\mathbf S_j$;
+every expression below is written in the weighted form so that the two cases
+are one derivation rather than two.
+
+\paragraph{The decision variable lives on the decision grid.} The sum in
+Eq.~\eqref{eq:quadratic-form} runs over accumulation epochs, but the degree
+cannot be chosen $M$ times. Let $g(i)=q$ map an accumulation epoch to its
+decision interval, $I_q=\{i: g(i)=q\}$, and write
+
+\begin{equation}
+  N_i = N_{g(i)} ,
+  \qquad
+  W_q \;=\; \sum_{i\in I_q}\Delta t_i
+  \label{eq:interval-weight}
+\end{equation}
+
+for the interval's total time weight. The allocation problem is then
+
+\begin{equation}
+  \min_{(N_1,\dots,N_{K_{\mathrm{dec}}}) \,\in\, \mathcal{N}^{K_{\mathrm{dec}}}}
+  \; \mathbf u^{\top}\mathbf Q\,\mathbf u
+  \qquad \text{subject to} \qquad
+  \sum_q W_q\,N_q^2 \;\le\; B \;=\; B_1 T ,
+  \qquad K_{\mathrm{dec}} \ll M .
+  \label{eq:allocation}
+\end{equation}
+
+The budget is a time integral of the instantaneous work rate, not a count of
+samples: $B_1$ of Section~\ref{sec:setup-budgets} is the time average
+$\langle N^2\rangle_t$, so the total over an arc of length $T$ is $B_1T$. Weighting by $W_q$ rather than by
+the sample count $\lvert I_q\rvert$ is what keeps this correct when the
+accumulation grid is refined near perilune --- an unweighted count would charge
+the budget as though perilune occupied most of the arc simply because it is
+sampled most densely. On a uniform grid $W_q=\lvert I_q\rvert\Delta t$ and the
+two agree.
+
+This is not only an implementability constraint. Optimizing over $M$ variables
+would give the benchmark more \emph{switching freedom} than any deployable
+controller has, and its advantage would then be partly a statement about grid
+resolution rather than about trajectory-aware information. Every allocation
+compared in this paper --- benchmark and controller alike --- is piecewise
+constant on the same decision grid.
+
+The result is an integer quadratic program with one knapsack constraint. Its
+structure, however, is unusually favourable.
+
+\subsection{The structure that makes it cheap}
+
+Because $\mathbf S_j$ is a prefix sum, the block of $\mathbf Q$ coupling epochs
+$i$ and $k$ collects exactly those $j$ that see both, that is $j\ge\max(i,k)$:
+
+\begin{equation}
+  \mathbf Q_{ik} \;=\; \frac{1}{T}\!\!\sum_{j\ge\max(i,k)}\!\!\omega_j\,\mathbf M_j
+  \;=\; \frac{1}{T}\,\mathbf A_{\max(i,k)} ,
+  \qquad
+  \mathbf A_i = \sum_{j\ge i} \omega_j\,\mathbf M_j .
+  \label{eq:Q-structure}
+\end{equation}
+
+The quadrature weights enter only inside the suffix sequence, so the structure
+that makes the problem tractable is untouched by a non-uniform grid. They are
+required to be non-negative, which rectangle and trapezoid rules satisfy and
+higher-order Newton--Cotes rules do not: with $\omega_j\ge0$ and each
+$\mathbf M_j$ positive semidefinite, $\mathbf Q$ is positive semidefinite, and
+that is what the convex relaxation of Section~\ref{sec:algorithm-certificate}
+rests on.
+
+$\mathbf Q$ therefore has no free entries at all: it is generated by the single
+suffix sequence $\mathbf A_i$, whose members are symmetric positive-semidefinite
+$6\times6$ blocks --- the same size as $\mathbf M_j$, since $\mathbf u_i$ is a
+state perturbation and the position selection happens inside $\mathbf M_j$
+rather than on $\mathbf u_i$. The cross term needed by any coordinate method
+follows from one prefix sum and one suffix sum,
+
+\begin{equation}
+  \mathbf c_i \;:=\; \sum_{k}\mathbf Q_{ik}\mathbf u_k
+  \;=\; \frac{1}{T}\Bigl[\;
+    \mathbf A_i \sum_{k\le i}\mathbf u_k
+    \;+\; \sum_{k>i}\mathbf A_k\,\mathbf u_k
+  \;\Bigr] ,
+  \label{eq:cross-term}
+\end{equation}
+
+so evaluating $\mathbf c_i$ at \emph{all} $M$ epochs costs $\mathcal{O}(M)$
+rather than the $\mathcal{O}(M^2)$ a dense $\mathbf Q$ would require, and the
+gradient $\nabla J = 2\mathbf Q\mathbf u$ is available at the same cost. A
+coordinate \emph{sweep} additionally tries $\lvert\mathcal{N}\rvert$ candidates
+per decision interval and so costs
+$\mathcal{O}(M\lvert\mathcal{N}\rvert)$; the two figures are quoted separately
+throughout because they measure different things.
+
+Grouping the epochs into decision intervals does not spoil this. For
+$I_q=\{i_1<\dots<i_m\}$ the within-block term telescopes, because
+$\max(i_p,i_{p'})=i_{p}$ whenever $p'<p$:
+
+\begin{equation}
+  \sum_{i,k\in I_q}\mathbf u_i^{\top}\mathbf Q_{ik}\mathbf u_k
+  \;=\;
+  \frac{1}{T}\Biggl[
+  \sum_{p}\mathbf u_{i_p}^{\top}\mathbf A_{i_p}\mathbf u_{i_p}
+  \;+\; 2\sum_{p}\Bigl(\sum_{p'<p}\mathbf u_{i_{p'}}\Bigr)^{\!\top}
+  \mathbf A_{i_p}\mathbf u_{i_p}\Biggr] ,
+  \label{eq:within-block}
+\end{equation}
+
+which one running prefix sum evaluates in $\mathcal{O}(m)$, and the
+between-block term is Eq.~\eqref{eq:cross-term} with the in-block part
+subtracted. A full sweep over all $K_{\mathrm{dec}}$ decision variables and all
+candidate degrees therefore remains
+$\mathcal{O}(M\lvert\mathcal{N}\rvert)$. Section~\ref{sec:algorithm} uses this.
+
+The terminal-position objective is the special case in which the outer
+quadrature collapses onto the final epoch, $\omega_j = T\,\delta_{jM}$, that is
+
+\begin{equation}
+  J_T \;=\; \bigl\lVert\,\mathbf H_r\,\Phi(t_M,t_0)\textstyle\sum_i\mathbf u_i
+  \,\bigr\rVert^2 ,
+  \label{eq:terminal}
+\end{equation}
+
+with the transport matrix retained because the $\mathbf u_i$ have been carried
+back to $t_0$; dropping it would score the accumulated perturbation in the
+wrong frame. Everything below covers this case unchanged.
+
+\subsection{Two grids, not one}
+\label{sec:problem-grids}
+
+The decision variable and the integrand live on different time scales, and
+conflating them is a measurement error rather than a modelling choice.
+
+The degree schedule $N(t)$ varies on the orbital time scale. The defect
+$\Delta\mathbf a$ does not: its direction is set by the leading omitted
+harmonics, whose half-wavelength at the spacecraft's radius is $\pi r/N$, so
+along track it decorrelates over
+\begin{equation}
+  \tau_{\mathrm{corr}} \;\approx\; \frac{\pi r}{N\,v} .
+  \label{eq:decorrelation}
+\end{equation}
+A signed integral sampled coarser than that is aliased, even where the
+corresponding magnitude statistic is converged --- and the previous paper
+verified convergence only of the magnitude, which moved by \ph{pct} between a
+120~s and a 10~s cadence.
+
+Equation~\eqref{eq:decorrelation} is not one number. Both $r$ and $v$ swing by
+factors of several on the eccentric orbits studied here, and $N$ with them, so
+$\tau_{\mathrm{corr}}$ runs from \ph{value}~s near a 50~km perilune at $N=300$
+to \ph{value}~s near apolune, a range of about \ph{value}. A uniform
+accumulation grid fine enough for perilune is therefore mostly spent where
+nothing happens, and one coarse enough for apolune aliases the passage that
+matters. The grid is refined on $\tau_{\mathrm{corr}}$ instead, which also
+requires the budget to be accumulated with time weights,
+$B_1 = \sum_i N_{g(i)}^2\,\Delta t_i / T$; on a uniform grid this reduces to
+the mean of Section~\ref{sec:setup-budgets}. \wpref{WP1, WP4}
+
+We therefore separate
+
+\begin{itemize}
+  \item the \emph{accumulation grid} $\Delta t_{\mathrm{acc}}$, on which
+    $\Delta\mathbf a$, $\Phi$ and the partial sums are formed, chosen fine
+    enough that $J$ and the recovered schedule are converged
+    (Section~\ref{sec:setup-grids}); and
+  \item the \emph{decision grid} $\Delta t_{\mathrm{dec}}$, on which $N$ is held
+    constant, chosen coarse enough to be implementable.
+\end{itemize}
+
+A schedule is thus piecewise constant on the decision grid while its
+consequences are integrated on the accumulation grid. Section~\ref{sec:setup-grids}
+reports the convergence of both, and Section~\ref{sec:ablations} reports what
+coarsening the decision grid costs. \wpref{WP4}

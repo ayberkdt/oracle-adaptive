@@ -1,0 +1,6 @@
+# Normalise to LF in the repository regardless of the checkout platform, so
+# that a diff shows a change of content and never a change of line ending.
+* text=auto eol=lf
+
+*.pdf binary
+*.npy binary

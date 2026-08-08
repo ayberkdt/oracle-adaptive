@@ -1,0 +1,105 @@
+\section{Introduction}
+\label{sec:intro}
+
+Evaluating a spherical-harmonic gravity field to degree $N$ costs
+$\mathcal{O}(N^2)$, and an adaptive-step integrator makes tens of thousands of
+force calls per propagated day. On an eccentric orbit the required degree is
+not constant along the arc, so the choice of $N$ is not one number but a
+schedule, and choosing that schedule under a declared compute budget is a
+resource-allocation problem rather than an accuracy question.
+
+The natural way to allocate is from the local truncation defect: spend degrees
+where the omitted acceleration is largest. That is what an attenuation
+threshold, a Kaula-weighted tail criterion, or a radius-driven rule all do in
+different guises, and it is what a Lagrangian treatment of a budgeted
+separable allocation formalizes \citep{everett1963generalized,
+shoham1988efficient}. It also produces the wrong ranking. Held to one gravity
+budget on two independent coverage designs, a schedule concentrated near
+perilune lowers the trajectory-averaged truncation force defect by a median
+factor of about five and still gives the larger seven-day position error
+\citep[\ph{self-citation of the previous paper}]{atallah2022radial}. The
+mechanism is not a sampling artefact: a first-order displacement is a
+\emph{signed} integral of the defect against the state-transition matrix, and a
+defect norm is a sum of magnitudes, so the two agree only when the defect is
+incoherent, which on these arcs it is not.
+
+\dnote{The self-citation above is the previous paper. Once it has a DOI,
+replace the placeholder and re-check that every claim attributed to it here is
+one that paper actually makes at the confidence level it makes it.}
+
+That leaves an obvious question unanswered, and this paper answers it. If the
+force-level criterion is the wrong objective, what does the right one give, how
+much is it worth, and can any of it be obtained without the information an
+oracle has? Three questions organize the paper.
+
+\begin{description}
+  \item[RQ1] Under trajectory-aware information, how much accuracy is
+    \emph{attainable} at a fixed budget, relative to the constant degree and to
+    the best radius-driven schedules?
+  \item[RQ2] How much of that comes from weighting each epoch by its
+    sensitivity, and how much from the signed cancellation that a magnitude
+    criterion discards?
+  \item[RQ3] How much survives without the reference trajectory and without
+    pointwise reference-field evaluations along it --- the controller keeping
+    only global, offline model metadata such as the degree variances?
+\end{description}
+
+Three things make the answers non-obvious, and each is a contribution.
+
+\paragraph{The objective is non-separable.} Writing the trajectory error in the
+form the dynamics impose puts the norm \emph{after} the signed integral, which
+couples every pair of epochs through cancellation. The standard multiplier
+treatment therefore does not apply, and neither does the obvious repair of
+reweighting the per-epoch defect by its sensitivity: that corrects the weight
+while still summing magnitudes. Section~\ref{sec:problem} states the problem
+and Section~\ref{sec:algorithm} shows that it is nonetheless cheap to solve
+well, because the discretized coupling matrix depends on the epoch pair only
+through $\max(i,k)$. A full coordinate sweep costs
+$\mathcal{O}(M\lvert\mathcal{N}\rvert)$, and a Frank--Wolfe bound on the
+convex-hull relaxation \citep{frank1956algorithm,jaggi2013revisiting}
+certifies how far the result sits from the relaxed optimum. Nothing is
+propagated to obtain it. The degree is a decision variable on a coarse decision
+grid rather than on the fine grid the objective is accumulated over, which
+costs nothing in the solve and matters for the comparison: a benchmark allowed
+to switch faster than any deployable controller would earn part of its margin
+from resolution rather than from information.
+
+\paragraph{Deployment needs a direction, not a magnitude.} A compact tail rule
+predicts how much acceleration a truncation omits; it says nothing about which
+way it points. Cancellation is exactly the part that needs the direction, so a
+controller built on a tail magnitude alone can reach the
+sensitivity-weighted level and no further. Section~\ref{sec:controller} shows
+that tabulating the direction is not a cheap way out either: the omitted field
+varies on the model's own resolution scale $\pi r/N$, which at degree 300 is
+under twenty kilometres of ground track, so a surrogate coarser than that scale
+cannot represent it and one fine enough to do so carries a comparable number of
+degrees of freedom. What is affordable is to \emph{probe} it, by evaluating the
+leading omitted bands --- one shared stack serving every candidate degree ---
+and to complete the amplitude from the model's measured degree-variance
+spectrum.
+
+\paragraph{The plan and the probe have different lifetimes.} The cancellation
+target is an accumulated quantity and is stable along an arc; the local omitted
+vector is field texture and is not. The same resolution scale that rules out a
+tabulated direction also says how far ahead one may look: over a single
+decision interval the vehicle's own state prediction is far more accurate than
+$\pi r/N$, so probing forward along it is admissible, while over a seven-day
+pilot arc it is not. A controller that plans offline on a cheap pilot arc and
+probes forward one interval at a time respects that split, reads neither the
+reference arc nor the field along it, and is the object the
+campaign of Section~\ref{sec:campaign} evaluates.
+
+Throughout, the budget that is held equal is realized total quadratic work,
+including the controller's own overhead, and not a nominal per-call count. The
+previous paper measured that the two differ by a median \ph{pct} and by a
+factor of \ph{value} in the compute-starved regime, which is precisely the
+regime where a budget matters, so the weaker definition is not used here to
+carry a verdict.
+
+\dnote{If the campaign lands in the amber band --- benchmark gap real,
+controller cannot capture it --- this introduction inverts: the three
+contributions become (i) the non-separable formulation and its certificate,
+(ii) the resolution-scale argument as a measured \emph{cost} statement about
+surrogates for the omitted direction, and (iii) a measured account of what deployable rules leave
+on the table. The formulation and the decorrelation argument survive either
+way; only the third paragraph changes.}

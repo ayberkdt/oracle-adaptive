@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tda"
+version = "0.1.0"
+description = "Trajectory-aware truncation-degree allocation for lunar gravity propagation"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.10"]
+
+# The package is deliberately NOT named after the word "oracle". Whether the
+# benchmark earns that name is bound to a certified gap threshold that will not
+# be known until WP7 runs (DECISIONS.md D1/D29), and a code artefact must not
+# announce a result the campaign has not produced.
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

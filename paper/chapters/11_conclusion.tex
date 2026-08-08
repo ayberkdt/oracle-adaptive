@@ -1,0 +1,89 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+\dnote{Three versions of this section are drafted below, one per outcome band
+of \code{../OUTCOMES.md}. Keep exactly one before submission and delete the
+other two together with this note. Drafting them in advance is deliberate: the
+point of the pre-registration is that the wording does not get chosen after the
+numbers arrive.}
+
+% ===========================================================================
+% VERSION A -- constructive (green / amber-green band)
+% ===========================================================================
+
+Allocating a spherical-harmonic degree budget from the local force error
+optimizes the wrong functional. Written in the form the dynamics impose, the
+objective takes the norm after a signed integral against the state-transition
+matrix, which couples every pair of epochs and makes the allocation
+non-separable. The classical multiplier treatment and its sensitivity-weighted
+repair both still \emph{work} --- they are separable and a single multiplier
+decouples them --- but they optimize the wrong functional, and the discretized
+form says exactly how: all three criteria are readings of one trajectory
+kernel, which the force-level rule ignores, the sensitivity-weighted repair
+reduces to its local diagonal, and only the third keeps whole. The weight was
+never the missing ingredient, because the weight \emph{is} that diagonal.
+
+The coupling nonetheless has a prefix--suffix structure that keeps a full sweep
+over the decision intervals at $\mathcal{O}(M\lvert\mathcal{N}\rvert)$ and
+admits a Frank--Wolfe bound on its convex-hull relaxation, so the problem is
+solved and certified without propagating anything, at a certified error gap of
+\ph{pct}. On \ph{n} orbits of \ph{n} independent designs the certified
+allocation is a median \ph{value} better than the equal-budget constant degree
+and \ph{value} better than the strongest previously available deployable
+schedule, and \ph{pct} of that advantage lives off the diagonal.
+
+Carrying it into a deployable rule turns on a quantity a tail criterion does
+not provide: the \emph{direction} of the omitted acceleration. That direction
+varies on the field's own resolution scale $\pi r/N$, which is \ph{value}~km at
+degree 300, so a surrogate coarser than that scale cannot represent it and one
+fine enough to do so carries a number of degrees of freedom comparable to the
+omitted coefficients themselves. It can be probed, and the probe is the
+controller's dominant cost rather than a rounding term: covering a decision
+interval takes a measured \ph{pct} of the total budget, and recovers
+the direction to $\kappa=\ph{value}$. The same length scale sets how far ahead
+the probe may look and how long a plan made on a cheap pilot arc stays valid,
+and those two answers differ: forward over one decision interval, yes; across a
+seven-day arc, no. That is why the controller plans its cancellation target
+offline and probes forward one interval at a time rather than uploading a
+schedule.
+
+Held to equal realized quadratic work including its own overhead, that
+controller has the smaller seven-day position error than the constant degree on
+\ph{n} of \ph{n} resolved comparisons across \ph{n} populations, capturing a
+median \ph{value} of the certified benchmark's advantage. \ph{state the
+$\beta=0.5$ outcome explicitly.} \ph{state the wide-elliptic outcome
+explicitly.}
+
+Every conclusion is model-relative and bounded by the tested designs, arc
+lengths and budgets. \ph{closing sentence naming the sharpest bound.}
+
+% ===========================================================================
+% VERSION B -- benchmark real, controller cannot capture it (amber band)
+% ===========================================================================
+%
+% \ph{Draft:} the formulation and the certificate stand; the benchmark shows a
+% median \ph{value} of attainable gain over the constant degree; no deployable
+% controller captures a resolvable fraction of it. The decorrelation argument
+% then carries the paper: what separates the benchmark from every deployable
+% rule is not the weighting and not the algorithm but access to the omitted
+% direction at the field's own resolution scale, and the probe measures exactly
+% how much of that access is affordable. State the capture fraction, name which
+% substitution destroys it (tail amplitude, pilot arc, low-degree $\Phi$, or
+% probe depth), and present the result as an information-limit statement that
+% strengthens rather than contradicts the previous paper.
+%
+% ===========================================================================
+% VERSION C -- no attainable gain (orange band)
+% ===========================================================================
+%
+% \ph{Draft:} even with the sensitivity and the sign, and with a certificate
+% bounding how much better any schedule of this class could be, allocation does
+% not systematically improve on a constant degree at equal realized work in
+% this regime. That closes the question the previous paper left open rather
+% than leaving it open, and it is worth stating without hedging. Distinguish
+% the two ways it can happen --- no gain in the linearized problem at all, or a
+% linearized gain that does not survive propagation
+% (Section~\ref{sec:campaign-fixedpoint}) --- because they mean different
+% things: the first says the objective has no exploitable structure at these
+% budgets, the second says the structure is an artefact of optimizing along a
+% fixed reference arc.

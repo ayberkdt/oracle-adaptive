@@ -1,0 +1,222 @@
+\section{Experimental setup}
+\label{sec:setup}
+
+\subsection{Field, dynamics and reference}
+
+\ph{one paragraph} GRAIL product and degree \citep{Konopliv2014GRAIL,
+GrailGL1800FSHADR,Goossens2020}; synthesis kernel and normalization
+\citep{holmes2002unified,pines1973uniform}; perturbation model and the
+conventions it follows \citep{montenbruck2000satellite,vallado2013fundamentals};
+third bodies and ephemeris \citep{park2021de440,acton2018spice}; integrator and
+tolerances \citep{hairer1993ode,virtanen2020scipy}; lunar orientation
+\citep{Mazarico2018}. Adopted \emph{reference} degree per orbit and the sense in
+which every result below is model-relative: what is measured is what the adopted
+expansion requires of its own truncations, not the distance to the true lunar
+field.
+
+\subsection{Populations}
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Orbit populations. Designs A and B are independent scrambles of the
+  same scrambled-Sobol coverage construction \citep{joe2008sobol}; C was drawn
+  and frozen after A and B were known to agree. That the design points are
+  dependent by construction is why no significance level is attached to any
+  tally. The wide-elliptic population lies outside the sampled factor box
+  and brackets the elliptical subsatellite orbits flown on Kaguya
+  \citep{kato2010kaguya}.}
+  \label{tab:populations}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Population & Orbits & Geometry & Role \\
+    \midrule
+    Design A & \ph{n} & \ph{box} & primary \\
+    Design B & \ph{n} & \ph{box} & independent replication \\
+    Design C & \ph{n} & \ph{box} & third design \\
+    Wide-elliptic & \ph{n} & perilune \ph{km}, apolune \ph{km} & regime bound \\
+    Strata (5) & \ph{n} each & inclination / argument of perilune restricted & geometry bound \\
+    Low perilune & \ph{n} & \ph{km} & linearization bound \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Budgets}
+\label{sec:setup-budgets}
+
+Four cost quantities appear and are never interchanged.
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Cost definitions. $B_2$ is the primary budget throughout; $B_1$ is
+  reported only for comparability with the previous paper.}
+  \label{tab:budget-definitions}
+  \begin{tabular}{@{}llp{0.44\textwidth}@{}}
+    \toprule
+    Symbol & Quantity & Note \\
+    \midrule
+    $B_1$ & nominal work rate, the \emph{time average} $\langle N^2\rangle_t
+            = \sum_i N_{g(i)}^2\Delta t_i/T$
+          & available without propagating; does not survive contact with the
+            integrator. On the uniform reference output grid this is the plain
+            mean, which is how the previous paper reported it \\
+    $B_2$ & realized total quadratic work $\sum_{\mathrm{RHS}}N^2$
+          & \textbf{primary}; requires propagation \\
+    $B_3$ & measured serial gravity-kernel time
+          & architecture-dependent; idle machine, three repeats \\
+    $B_+$ & controller overhead, in the same units as $B_2$
+          & \textbf{included in every budget reported for \Cplan, \Clite\ and
+            \Cfb}; conversion below \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{What $B_+$ is measured in.} $B_2$ counts quadratic work,
+$\sum_{\mathrm{RHS}}N^2$, and $B_+$ is added to it, so the two must carry the
+same units. Two of the overhead terms already do: the pilot arc and the online
+probe are gravity evaluations and enter directly as $\sum N^2$. The rest ---
+the two-body predictor, the planning sweeps, the online $\argmin$ and its
+bookkeeping --- are processor time and are converted at the measured rate of
+the same run,
+
+\begin{equation}
+  B_{+,\mathrm{eq}} \;=\; t_+ \Bigl/ \frac{t_{\mathrm{kernel}}}{B_2} ,
+  \label{eq:overhead-units}
+\end{equation}
+
+with $t_{\mathrm{kernel}}$ the arc's measured serial gravity-kernel time. The
+ratio $t_{\mathrm{kernel}}/B_2$ is a seconds-per-unit-work coefficient, so
+Eq.~\eqref{eq:overhead-units} expresses non-gravity time in $N^2$ units and
+Eq.~\eqref{eq:matching} adds like to like. The coefficient is
+architecture-dependent and is measured under the same conditions as $B_3$, on
+an idle machine with three repeats; every table quoting $B_+$ names the machine
+it was measured on.
+
+\paragraph{Normalization.} $\beta$ is defined at the $B_1$ level only, as the
+allocation \emph{target} $\beta=B_1/N_{\mathrm{crit}}^2$. The realized
+counterpart is reported separately as
+$\beta_2 = B_2/(K_{\mathrm{ref}}N_{\mathrm{crit}}^2)$, with
+$K_{\mathrm{ref}}$ the comparator's right-hand-side call count on the same arc;
+dividing $B_2$ by $N_{\mathrm{crit}}^2$ alone would fold the call count into
+the same number and is not done.
+
+\paragraph{Matching convention.} Comparisons are matched on total budget, and
+the controller's overhead comes out of its own allocation:
+
+\begin{equation}
+  B_2 + B_+ \;=\; B_{\mathrm{tot}} \;=\; B_{2,\mathrm{F}} ,
+  \label{eq:matching}
+\end{equation}
+
+with $B_+=0$ for every policy that is not a controller. No fictitious overhead
+is added to the fixed comparator, so a controller that must plan and probe has
+strictly less budget left for gravity evaluation than its comparator does ---
+the conservative reading, and the one adopted throughout.
+
+Equation~\eqref{eq:matching} is not complete until it says which side moves,
+and the answer is not the one the previous campaign used. There, the comparator
+was re-propagated to spend what the candidate had spent. That cannot be done
+here, because the capture fraction of Section~\ref{sec:campaign} divides one
+difference by another and both must be taken against \emph{the same}
+$E_{\Fop}$; a comparator that slides to meet each candidate would put two
+different $\Fop$ instances in the numerator and the denominator.
+
+We therefore anchor. For each orbit and each $\beta$, $B_{\mathrm{tot}}$ is
+declared in advance as the realized total quadratic work of $\Fop(\beta)$ on
+that arc --- at $\beta=1$ that is the archived critical-degree run, so the
+anchor already exists and is not recomputed --- and \emph{every candidate is
+calibrated to it}.
+
+That calibration costs propagations, and the cost is a consequence of the
+previous paper's own result rather than an inefficiency: a schedule's realized
+work is not known until it is flown, and calibrating on nominal per-call work
+misses it by a median \ph{pct}. Each candidate is therefore propagated,
+measured, its multiplier adjusted, and propagated again until
+$\lvert B_2+B_+-B_{\mathrm{tot}}\rvert/B_{\mathrm{tot}}\le\ph{pct}$, which
+takes \ph{value} propagations per candidate in practice. Section~\ref{sec:campaign}
+reports the achieved match alongside every verdict.
+
+The propagated grid is $\beta\in\{0.50,0.75,1.00,1.25,1.50\}$;
+$\beta=3$ is evaluated at benchmark level only, because at that budget the
+previous campaign found \ph{n} of \ph{n} comparisons undecidable and the
+experiment stops being an instrument.
+
+\subsection{Grids and their convergence}
+\label{sec:setup-grids}
+
+\ph{one paragraph plus table} The campaign runs on an accumulation grid
+refined on $\tau_{\mathrm{corr}}$, so the convergence parameter is not an
+absolute step but the number of samples per correlation time,
+$n_s=\tau_{\mathrm{corr}}(t)/\Delta t_i$, swept over
+$\{0.5,1,2,4,8\}$. A uniform-grid sweep at
+$\Delta t_{\mathrm{acc}}\in\{240,120,60,30,10\}$~s is run alongside it, both
+because it is the comparable quantity in the previous paper and because it
+isolates whether the refinement, rather than the resolution, is what matters.
+Three quantities are checked in each: the objective, the recovered schedule
+itself as a degree-profile distance, and verdict stability. The decision grid
+is swept separately at $\Delta t_{\mathrm{dec}}\in\{60,120,300\}$~s. The
+campaign runs at $n_s=\ph{value}$. \wpref{WP4}
+
+\dnote{Section~\ref{sec:problem} predicts that the signed integral needs a
+finer grid than the magnitude statistic did. If the panel contradicts that ---
+if 120~s is already converged for $J$ and for the schedule --- say so plainly
+and delete the prediction rather than keeping it as motivation.}
+
+\subsection{Resolution rule and statistics}
+
+A comparison is decided only when the two errors differ by more than their
+summed reference-inclusive numerical envelope, $M_{\mathrm{res}}>1$; comparisons
+below that are \emph{undecided} and are counted for neither side. No
+significance level is attached to any tally: the points of a scrambled design
+are dependent by construction and the resolution rule censors the sample
+non-randomly, so a binomial test would have no valid null. Direction rests on
+replication across independent populations. Ratios are medians of per-orbit
+ratios, never ratios of medians.
+
+\subsection{Comparators}
+\label{sec:setup-comparators}
+
+Two constant-degree comparators are carried, and they answer different
+questions.
+
+\begin{itemize}
+  \item \Fop, the integer degree nearest the budget, is what a user can select
+    in advance. Beating it is the claim.
+  \item \Fenv, the lowest-error member of the constant family under the same
+    budget, is found by measuring every candidate against the reference. It is
+    a post-hoc lower envelope, not a policy; the previous paper measured it a
+    median \ph{value} times better than the saturating degree. It is reported
+    to bound how much of the constant family's potential \Fop\ leaves unused,
+    and no hypothesis of this paper requires beating it.
+\end{itemize}
+
+\Rint, the interior member of the radial--constant interpolation family, is
+carried as the strongest previously available deployable schedule.
+
+\subsection{Pre-registration and its stopping rules}
+\label{sec:setup-prereg}
+
+Hypotheses, gates, sweeps, comparator rules, censoring and the naming rule of
+Section~\ref{sec:algorithm-certificate} were written to
+\ph{oa01/oa02/oa03 json} and hashed before any aggregate result was inspected.
+Anything added later is labelled post hoc and reported separately; rejected
+hypotheses are reported as rejected rather than reworded. \ph{outcome list}
+
+Two of those rules bound the campaign rather than a single number, and both are
+stated here because later sections invoke them.
+
+\paragraph{Budget gate.} The first propagated campaign is at $\beta=1$ on one
+design. The budget grid is extended to the rest of the populations only if the
+controller also takes the resolved majority at $\beta=0.75$ \emph{and}
+$\beta=1.25$ on a stratified sixteen-orbit subset. If it does not, the gain
+belongs to one budget point, the population expansion is not run, and the
+result is reported as such.
+
+\paragraph{Screening escape.} The variational screen of
+Section~\ref{sec:campaign} is calibrated on policies that were not built by
+minimizing $J$, so its transfer to policies that were is an assumption rather
+than a measurement. If the propagated sign disagrees with the screened sign,
+the implementation is diagnosed; after two diagnostic rounds without
+resolution the instrument is declared uncalibrated for this class, the screen's
+selection is discarded, and the campaign proceeds on propagation alone with a
+reduced candidate list. The cost of that path is reported rather than absorbed.
+The rule exists so that a disagreement cannot become an open-ended loop.

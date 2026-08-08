@@ -1,0 +1,82 @@
+\section*{Nomenclature}
+\noindent
+\begin{minipage}[t]{0.48\textwidth}
+\emph{Symbols}\\[2pt]
+\begin{tabular}{@{}l@{\ \ }l@{}}
+$N$ & spherical-harmonic truncation degree \\
+$N_i$ & degree in force at accumulation epoch $i$ \\
+$\mathcal{N}$ & candidate degree set \\
+$N_{\mathrm{crit}}$ & critical-altitude fixed degree \\
+$R$ & reference radius of the field model \\
+$M$ & number of accumulation epochs \\
+$\Delta t_{\mathrm{acc}}$ & accumulation step \\
+$\Delta t_{\mathrm{dec}}$ & decision step (degree held constant) \\
+$\Delta t_{\mathrm{probe}}$ & tail-probe refresh interval \\
+$\Delta\mathbf a$ & truncation acceleration defect \\
+$\hat{\mathbf v}$ & estimated omitted-acceleration vector \\
+$\Phi$ & reference state-transition matrix \\
+$\mathbf B$ & acceleration-to-velocity input map \\
+$\mathbf G$ & gravity gradient $\partial\mathbf a/\partial\mathbf r$; generates $\Phi$ \\
+$\mathbf u_i$ & epoch contribution $\Phi(t_0,t_i)\mathbf B\Delta\mathbf a\,\Delta t$ \\
+$\mathbf S_j$ & partial sum $\sum_{i\le j}\mathbf u_i$ \\
+$\mathbf Q$ & objective coupling matrix \\
+$\mathbf c_i$ & cross term $\sum_k \mathbf Q_{ik}\mathbf u_k$ \\
+$\lambda$ & budget multiplier \\
+$\mathbf H_r$ & position selector $[\,\mathbf I_3\;\;\mathbf 0\,]$ \\
+$\Delta t_i$ & accumulation step at epoch $i$ (non-uniform) \\
+$\omega_j$ & outer-quadrature weight, $\omega_j\ge0$, $\sum_j\omega_j=T$ \\
+$\mathbf K(\tau,\sigma)$, $\mathbf K_i$ & objective kernel and its diagonal $\mathbf K(t_i,t_i)$; the \Asens\ weight \\
+$g(i)$, $I_q$ & epoch-to-interval map and its fibre \\
+$W_q$ & interval time weight $\sum_{i\in I_q}\Delta t_i$ \\
+$K_{\mathrm{dec}}$ & number of decision intervals \\
+$T$ & arc length \\
+$k$ & probe depth (number of leading omitted bands) \\
+$\delta$ & candidate-window half-width, in grid indices \\
+$\Delta_{\mathrm{span}}$ & degree span the window induces \\
+$n_{\mathrm{probe}}$ & probe points per decision interval \\
+$r_{\mathrm{RHS}}$, $N_{\mathrm{RHS}}$ & right-hand-side call rate and arc total \\
+$\gamma$ & amplitude completion factor, from $P_n$ \\
+$P_n$ & coefficient degree variance \\
+$J$ & forward--backward iteration count \\
+$L_{\mathrm{FW}}$ & Frank--Wolfe lower bound \\
+$g_J$, $g_E$ & certified gap in objective and error \\
+\end{tabular}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\emph{Budgets and metrics}\\[2pt]
+\begin{tabular}{@{}l@{\ \ }l@{}}
+$B_1$ & nominal work rate, time average $\langle N^2\rangle_t$ \\
+$B_2$ & realized total quadratic work $\sum_{\mathrm{RHS}}N^2$ \\
+$B_3$ & measured serial gravity-kernel time \\
+$B_+$ & controller overhead \\
+$B$ & total nominal work, $B=B_1T=\sum_q W_qN_q^2$ \\
+$\beta$ & allocation target $B_1/N_{\mathrm{crit}}^2$ \\
+$\beta_2$ & realized $B_2/(K_{\mathrm{ref}}N_{\mathrm{crit}}^2)$ \\
+$E$ & propagated seven-day position RMS error \\
+$\hat E$ & first-order predicted error, $\hat E=\sqrt{J}$ \\
+$\rho,\ \hat\rho$ & error ratio, comparator over candidate \\
+$f$ & capture fraction of the benchmark gap \\
+$M_{\mathrm{res}}$ & resolution margin; resolved if $>1$ \\
+$\kappa$ & probe direction accuracy $\cos\angle(\hat{\mathbf v},\Delta\mathbf a)$ \\
+$\kappa_{\mathrm{eff}}$ & the same, averaged over a decision interval \\
+$\tau_{\mathrm{corr}}$ & defect-direction correlation time $\pi r/(Nv)$ \\
+$T_{\mathrm{coh}}$ & pilot-arc coherence horizon \\
+\end{tabular}
+\\[8pt]
+\emph{Policies}\\[2pt]
+\begin{tabular}{@{}l@{\ \ }l@{}}
+\Fop & operational fixed comparator \\
+\Fenv & fixed-family lower envelope (post hoc) \\
+\Rrad & budget-calibrated radial endpoint \\
+\Rint & interior member \\
+\Aforce & force-level allocation benchmark \\
+\Asens & sensitivity-weighted benchmark \\
+\Asign & signed trajectory-aware benchmark \\
+\Cplan & planned trajectory-aware controller \\
+\Cfb & budget-feedback variant \\
+\Ctgo & time-to-go-only ablation \\
+\end{tabular}
+\end{minipage}
+
+\vspace{6pt}

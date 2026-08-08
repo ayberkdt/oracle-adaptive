@@ -1,0 +1,163 @@
+\section{Ablations: which ingredient earns the gain}
+\label{sec:ablations}
+
+Each ablation removes one ingredient and leaves the rest intact, and all are
+scored by the forced variational solution rather than by propagation.
+
+Two things about the panel are declared rather than left to be inferred. The
+fourteen ablations are run on a \ph{n}-orbit perilune-spread panel, smaller
+than the \ph{n}-orbit panel the candidates themselves were screened on, because
+each variational solve costs about one propagation and fourteen removals across
+the full panel would cost more than the propagated campaign it is meant to
+inform. And all fourteen share one augmented integration per orbit, differing
+only in their forcing channel, so the panel is the same for every row of
+Table~\ref{tab:ablations} and the rows are comparable with each other. They are
+\emph{not} directly comparable with the ladder of Table~\ref{tab:ladder}, which
+stands on the full design. \wpref{WP9, WP13}
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Ablations at $\beta=1$. ``Retained'' is the fraction of the
+  controller's advantage over \Fop\ that survives the removal. \ph{fill}}
+  \label{tab:ablations}
+  \begin{tabular}{@{}llcc@{}}
+    \toprule
+    Code & What is removed & Retained & Note \\
+    \midrule
+    \code{abl-sign}  & the coupling term; \Cplan\ collapses to a
+      sensitivity-weighted rule & \ph{pct} & answers RQ2 on the deployable side \\
+    \code{abl-phi} & $\Phi$, leaving only a $(T-t)$ horizon weight
+      (\Ctgo) & \ph{pct} & \\
+    \code{abl-probe} & the probe; direction replaced by a fitted
+      $(r,\phi,\lambda,N)$ surrogate & \ph{pct} & tests
+      Section~\ref{sec:controller-direction} directly \\
+    \code{abl-null}  & the probe direction randomized at matched magnitude &
+      \ph{pct} & negative control; must destroy the gain \\
+    \code{abl-kaula} & the measured spectrum $P_n$ in $\gamma$ replaced by a
+      fitted power law & \ph{pct} & prices the choice of
+      Eq.~\eqref{eq:gamma} over a Kaula extrapolation \\
+    \code{abl-pilot} & pilot arc replaced by the reference arc & \ph{pct} &
+      prices the foreknowledge \\
+    \code{abl-stm}   & low-degree $\Phi$ replaced by a Keplerian one &
+      \ph{pct} & is a closed form enough \\
+    \code{abl-J}     & $J=1$ instead of $J=\ph{value}$ & \ph{pct} & how many
+      passes are needed \\
+    \code{abl-k}     & probe depth $k=1$ instead of $k=\ph{value}$ &
+      \ph{pct} & \\
+    \code{abl-window} & candidate window $\delta$ narrowed and widened &
+      \ph{pct} & prices the plan/probe split; wider costs $B_+$ \\
+    \code{abl-grid}  & decision grid $\Delta t_{\mathrm{dec}}$ swept over
+      \ph{value}~s & \ph{pct} & the cadence the coupling needs, against the
+      integrator work it provokes \\
+    \code{abl-lookahead} & forward probe replaced by a probe at the boundary
+      only & \ph{pct} & tests Section~\ref{sec:controller-causality} directly \\
+    \code{abl-predictor} & two-body probe-point predictor replaced by a
+      low-degree micro-propagation & \ph{pct} & prices the predictor choice \\
+    \code{abl-timeindex} & phase-indexed plan replaced by a time-indexed one &
+      \ph{pct} & prices the pilot arc's timing offset,
+      Section~\ref{sec:controller-split} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[!tbp]
+  \centering
+  \ph{figures/fig\_oa\_ablation\_waterfall.pdf}
+  \caption{Ablation waterfall from the benchmark down to the constant degree.}
+  \label{fig:waterfall}
+\end{figure}
+
+\paragraph{The negative control is the one to read first.} \code{abl-null}
+keeps every magnitude and randomizes only the direction. If the controller
+retains its advantage under that ablation, the advantage is not coming from the
+signed information the paper claims it comes from, and no other row means what
+it appears to mean. \ph{state the outcome.}
+
+\paragraph{The surrogate ablation tests an argument, not a variant.}
+Section~\ref{sec:controller-direction} argues that tabulating the omitted
+direction is not a cheap alternative, because it varies on the field's own
+resolution scale.
+\code{abl-probe} builds the surrogate anyway --- \ph{describe: fitted on the
+reference field over the sampled altitude range, with \ph{n} degrees of
+freedom} --- and measures what it retains. \ph{one paragraph.} What is
+reported is the pair: what the surrogate retains, and what it costs in degrees
+of freedom and evaluation time to retain it. A surrogate that resolves
+$\pi r/N$ carries a number of parameters comparable to the omitted
+coefficients, \ph{value} against \ph{value}, and that comparison is the
+measured form of the argument in Section~\ref{sec:controller-direction} --- not
+a claim that no such surrogate can be built.
+
+\subsection{Four controls on the design of the controller itself}
+\label{sec:ablations-design}
+
+The ablations above price the ingredients of \Cplan. They cannot say whether
+\Cplan\ is the right \emph{shape}, because every row holds the architecture
+fixed. Four further controls test the architecture. None of them requires a
+propagation: all four run on the tabulated $\mathbf u_i(N)$, the suffix
+sequence $\mathbf A_i$ and the Frank--Wolfe iterate that
+Sections~\ref{sec:benchmark} and~\ref{sec:algorithm} produce anyway.
+\wpref{WP21}
+
+\paragraph{Is the descent the weak link, or is the bound?} The certified gap
+$g_E$ conflates two quantities --- how far the descent sits above the integer
+optimum, and how far the relaxation sits below it --- and the campaign's
+response to a wide gap differs completely between them. On short instances
+($K_{\mathrm{dec}}=\ph{n}$, $\lvert\mathcal N\rvert=\ph{n}$) the integer
+optimum $J^{*}$ is obtained exactly by enumeration, which splits the gap into
+$J_{\mathrm{desc}}-J^{*}$ and $J^{*}-L_{\mathrm{FW}}$. \ph{state which
+dominates.} We also report a second solver on the full problem:
+\code{S-round} rounds the Frank--Wolfe iterate --- per-interval
+$\arg\max_N\theta_{qN}$,
+then sum-up rounding, then one polishing sweep --- and if it beats the
+multi-start descent it becomes the reported schedule and the descent becomes
+the control.
+
+\paragraph{How many directions does the coupling actually use?} Each
+$\mathbf M_j$ has rank three by construction, but $\mathbf A_i$ is a sum of
+them and its eigenvalue spread has not been reported anywhere. Table
+\ph{tab} gives the number of eigendirections carrying $95\%$ of
+$\operatorname{tr}\mathbf A_i$ along the arc, and the objective error and
+schedule change when $\mathbf A_i$ is truncated to them. \ph{state the number.}
+The consequence is architectural rather than cosmetic: if the trace
+concentrates in one or two directions, the accumulated state that drives the
+coupling is that many scalars, and a controller can carry and update them in
+flight instead of reading a six-vector target from an offline plan.
+
+\paragraph{How far ahead does the coupling reach?}
+Table~\ref{tab:horizon} replaces $\mathbf A_i$ by its truncation to a horizon
+$H$ and re-solves, which is \Asign\ run receding-horizon with perfect
+information. The curve says what a replanning controller would need to look at,
+and it is also the direct physical statement --- absent from
+Section~\ref{sec:benchmark}, where it belongs --- of the range over which
+cancellation operates.
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Horizon sufficiency. $\hat\rho(H)$ is the benchmark ratio when the
+  allocation is solved against only the next $H$ of trajectory. $H^{*}$ is the
+  smallest $H$ reaching $0.90$ of the full-horizon ratio. \ph{fill from WP21}}
+  \label{tab:horizon}
+  \begin{tabular}{@{}lcccccc@{}}
+    \toprule
+    $H$ (revolutions) & $1/8$ & $1/4$ & $1/2$ & $1$ & $2$ & full arc \\
+    \midrule
+    $\hat\rho(H)/\hat\rho(T)$ & \ph{v} & \ph{v} & \ph{v} & \ph{v} & \ph{v}
+      & $1$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Could a state-feedback rule have found this without probing?} This
+is the control that can falsify the paper's information claim, so it is stated
+with its failure condition first. A policy is fitted to the \Asign\ schedules
+on design A and evaluated on design B, and what is reported is the fraction of
+\Asign's advantage over \Fop\ that it retains out of sample. In the smooth-state
+variant the features are altitude, radius, speed, orbital phase, time to go and
+budget spent --- position on the sphere is withheld. \textbf{If that variant
+retains more than $0.60$ of the advantage, the gain is geometric rather than
+textural, the probe of Section~\ref{sec:controller} is unnecessary, and this
+paper's information statement is wrong.} \ph{state the outcome, and state it
+as a rejection if it is one.} The second variant adds position at increasing
+resolution and joins the surrogate curve above. The fitted policy is a control,
+not a proposed method: the simplest expressive form is used and its complexity
+is reported alongside what it buys.

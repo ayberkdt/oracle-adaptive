@@ -1,0 +1,136 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{What a non-separable objective changes in practice}
+
+\ph{one or two paragraphs} The separable reading of degree selection --- spend
+where the local error is largest --- is not a poor approximation to the right
+answer; it optimizes a different functional, and the previous paper measured
+that the two can order two policies oppositely. What this paper adds is that
+the right functional is still tractable, because the coupling has a prefix--
+suffix structure, and that the part a deployable rule cannot easily obtain is
+not the weight but the sign. The sharpest way to say it is that all three
+criteria are readings of one trajectory kernel: the force-level rule ignores
+it, the sensitivity-weighted repair retains only its local diagonal
+$\mathbf K(t,t)$, and only the third retains the cross-epoch coupling that
+encodes cancellation. The weight was never the missing ingredient, because the
+weight \emph{is} that diagonal.
+
+\subsection{The resolution scale as a design constraint}
+
+\ph{one paragraph} One length scale, $\pi r/N$, turns out to fix five otherwise
+unrelated design choices:
+
+\begin{enumerate}
+  \item the sampling requirement on the accumulation grid, so that the signed
+    integral is not aliased (Eq.~\eqref{eq:decorrelation});
+  \item the resolution a surrogate for the omitted direction would have to
+    reach, and therefore its cost (Section~\ref{sec:controller-direction});
+  \item the probe refresh interval;
+  \item the probe's share of the budget, which is the arc integral of its
+    reciprocal (Eq.~\eqref{eq:probe-overhead-arc}); and
+  \item the coherence horizon of the pilot arc, which is what forces the plan
+    to be phase-indexed and the probe to be online.
+\end{enumerate}
+
+The rule of thumb worth carrying away is
+\emph{nothing that varies faster than the truncation's own resolution scale can
+be planned in advance} --- and the corollary, which is the expensive half:
+whatever must therefore be measured in flight costs a synthesis every time the
+scale turns over.
+
+\subsection{Relation to goal-oriented adaptivity}
+
+\ph{one paragraph} \citep{becker2001optimal}. The structural difference is that
+the functional here is quadratic in an integral of the residual, so the
+adjoint weight is not a scalar field and the resulting allocation is coupled
+rather than pointwise.
+
+\subsection{When would a practitioner use this?}
+
+\ph{one paragraph} The controller costs a pilot arc, an offline planning pass,
+and an online probe of \ph{pct} of the gravity budget. Two of those three
+amortize and one does not, which decides the answer. The pilot arc and the plan
+are paid once per trajectory family and can be reused across a Monte Carlo
+ensemble or a covariance study; the probe is paid on every arc, every time.
+A single arc therefore pays the full setup for one use and is the worst case;
+\ph{quantify the break-even in arcs.} If the campaign lands in the regime where
+the probe alone exceeds the margin, the honest recommendation is \Clite\ or the
+constant degree, and Section~\ref{sec:campaign} says which.
+
+\subsection{Limits}
+
+\begin{itemize}
+  \item \textbf{Model-relative.} Everything is measured against an adopted
+    reference expansion, not against the true lunar field.
+  \item \textbf{Linearization.} Both the benchmark and the planner are
+    first-order. Amplitudes are not interpreted below \ph{km} perilune, where
+    the previous campaign found the first-order amplitude wrong by up to a
+    factor of two while the sign survived.
+  \item \textbf{Arc length.} Calibrated and evaluated on seven-day arcs.
+    \ph{state the sixty-day outcome.} A schedule planned for one arc length
+    does not transfer to another, because the perilune descends and the dwell
+    shifts.
+  \item \textbf{Geometry.} \ph{state which populations the claim holds on.}
+  \item \textbf{Certificate scope.} The gap of
+    Section~\ref{sec:algorithm-certificate} bounds the distance to the best
+    schedule of the linearized reference-arc problem, not of the propagated
+    one.
+  \item \textbf{Overhead is not small.} The online probe consumes \ph{pct} of
+    the budget, an order of magnitude more than the switching cost and enough
+    to decide the comparison on its own. It is charged in full
+    (Eq.~\eqref{eq:matching}), but a reader should treat any margin narrower
+    than it as contingent on the measured overhead rather than on the
+    allocation idea.
+  \item \textbf{Screening is not independent of the objective.} Candidates were
+    screened by the same functional the benchmark optimizes
+    (Section~\ref{sec:campaign}). The propagated sign check is what tests that
+    transfer, and it is load-bearing rather than confirmatory.
+  \item \textbf{No located optimum.} No continuous optimum in $\beta$, in $k$,
+    in $\delta$, in $n_s$ or in $J$ is located anywhere in this paper; all are
+    sampled on declared grids.
+  \item \textbf{The benchmark and the controller are not claimed with equal
+    force.} \Asign\ is derived from the trajectory-error functional itself and
+    is certified against it, so the attainability result stands on the
+    derivation. \Cplan\ is not claimed to be the best deployable schedule ---
+    it is the first interpretable, auditable, low-complexity one. Three of its
+    design choices are measured rather than argued and each has a declared
+    alternative: the coordinate descent against a global solve on short
+    instances (Section~\ref{sec:ablations}), the frozen offline plan against
+    the horizon over which the coupling actually reaches
+    (Table~\ref{tab:horizon}), and the band probe against a state-feedback
+    policy fitted to \Asign\ itself. Where a measurement favours the
+    alternative, it is reported as favouring the alternative.
+\end{itemize}
+
+\subsection{Future work}
+
+\ph{short paragraph} Each item below is named with the measurement in this
+paper that decides whether it is worth doing, so the list is a set of
+conditional branches rather than a wish list.
+
+\begin{itemize}
+  \item \emph{Receding-horizon replanning}, if the horizon curve of
+    Table~\ref{tab:horizon} has its knee well inside the arc or the coherence
+    horizon of Section~\ref{sec:controller-split} is short.
+  \item \emph{A reduced cancellation state.} The coupling enters only through
+    $\mathbf A_i$, whose rank is at most three by construction and whose
+    eigenvalue spread is reported in Section~\ref{sec:ablations}. If the trace
+    concentrates in one or two directions, the accumulated state the controller
+    must carry is that many scalars rather than a six-vector, and it can be
+    updated in flight instead of being planned offline --- a cheaper controller
+    than the one flown here, and the same reduction that makes a trellis
+    formulation tractable.
+  \item \emph{A switching penalty}, which turns the coordinate descent into a
+    trellis problem and is only worth the state if that reduction holds.
+  \item \emph{A vector-tail surrogate} in place of the probe, along the
+    cost--retention curve of Section~\ref{sec:ablations}, if the measured probe
+    overhead stays at the level reported here.
+  \item \emph{A stronger solver} --- relax-and-round on the Frank--Wolfe
+    iterate, or a global solve --- if the gap decomposition attributes the
+    certified gap to the descent rather than to the relaxation.
+  \item Allocation against an ensemble of initial states rather than one;
+    transfer to other fields \citep{konopliv2016mars}; and propagating
+    coefficient uncertainty into the degree-variance spectrum the amplitude
+    estimate rests on.
+\end{itemize}

@@ -1,0 +1,244 @@
+\section{Solving the allocation, and certifying it}
+\label{sec:algorithm}
+
+Problem~\eqref{eq:allocation} is solved twice: once from above, by a descent
+that returns an attainable schedule, and once from below, by a relaxation that
+bounds what any schedule could achieve. The pair is what licenses the language
+used for the result.
+
+\subsection{Attainable schedule: budgeted coordinate descent}
+\label{sec:algorithm-descent}
+
+Introduce the multiplier $\lambda$ on the budget and minimize
+$J(\mathbf u)+\lambda\sum_q W_q N_q^2$ by sweeping the \emph{decision
+intervals}. Holding all other intervals fixed, the terms involving $N_q$ are
+
+\begin{equation}
+  N_q \;\leftarrow\; \argmin_{N\in\mathcal{N}}\;
+  \Bigl[\;
+    \underbrace{\sum_{i,k\in I_q}\mathbf u_i(N)^{\top}\mathbf Q_{ik}\,
+      \mathbf u_k(N)}_{\text{within block, Eq.~\eqref{eq:within-block}}}
+    \;+\; 2\sum_{i\in I_q}\mathbf u_i(N)^{\top}\mathbf c_i^{(-q)}
+    \;+\; \lambda\,W_q\,N^2
+  \;\Bigr] ,
+  \label{eq:coordinate-update}
+\end{equation}
+
+with the interval time weight $W_q$ of Eq.~\eqref{eq:interval-weight} in place
+of the sample count, and
+$\mathbf c_i^{(-q)}=\mathbf c_i-\sum_{k\in I_q}\mathbf Q_{ik}\mathbf u_k$
+from Eq.~\eqref{eq:cross-term}. The first group of terms is the block's own
+contribution --- a magnitude, which is what a separable method would see ---
+and the second is the coupling: it rewards a defect pointing \emph{against} the
+accumulated displacement. That second term is the whole difference between this
+and a sensitivity-weighted allocation.
+
+\begin{algorithm}[!htbp]
+\caption{Budgeted coordinate descent for Eq.~\eqref{eq:allocation}}
+\label{alg:descent}
+\begin{algorithmic}[1]
+\Require tabulated $\mathbf u_i(N)$ for $i=1..M$, $N\in\mathcal{N}$; suffix
+  blocks $\mathbf A_i$; grouping $g$; budget $B$; start set $\mathcal{S}$
+  (Table~\ref{tab:starts})
+\State $\lambda \gets$ bracket from the separable solution
+\Repeat \Comment{outer: bisection on the budget}
+  \For{each start $s\in\mathcal{S}$} \Comment{multi-start, \emph{not} one start}
+    \State $N \gets s$
+    \Repeat \Comment{inner: sweeps}
+      \State refresh prefix sums of $\mathbf u$ and suffix sums of
+        $\mathbf A_k\mathbf u_k$
+      \For{$q = 1 \dots K_{\mathrm{dec}}$}
+        \State update $N_q$ by Eq.~\eqref{eq:coordinate-update}; patch the two
+          running sums over $I_q$
+      \EndFor
+    \Until{no interval changes, or sweep limit}
+    \State record $(J(N),\,N)$
+  \EndFor
+  \State $N^\star(\lambda) \gets \argmin_s J$ \Comment{best of starts, at this
+    $\lambda$}
+  \State $\lambda \gets$ bisect on $\sum_q W_q N_q^{\star2} - B$
+\Until{budget met to tolerance \ph{value}}
+\State \Return $N^\star$, $J(N^\star)$, and the spread of $J$ across
+  $\mathcal{S}$
+\end{algorithmic}
+\end{algorithm}
+
+The multi-start loop sits \emph{inside} the bisection rather than outside it:
+each $\lambda$ is solved from scratch from all starts. That is more expensive
+than warm-starting from the previous $\lambda$, and it is deliberate --- a
+warm start would make the returned schedule depend on the bisection path, which
+is precisely the failure mode the monotonicity check below is meant to detect.
+
+Each sweep is $\mathcal{O}(M\lvert\mathcal{N}\rvert)$ by
+Eqs.~\eqref{eq:cross-term} and~\eqref{eq:within-block} --- grouping changes the
+number of decision variables but not the sweep cost --- and no field evaluation
+occurs inside the loop: the $\mathbf u_i(N)$ table is built once per orbit.
+
+\paragraph{Summation.} The prefix sums are accumulated in compensated
+(Neumaier) arithmetic. This is not routine caution: $\mathbf S_j$ is a sum of
+order $10^5$ signed terms whose cancellation is the very quantity the method
+exploits, so the summation is ill-conditioned by construction, and the ratio of
+$\sum_i\lVert\mathbf u_i\rVert$ to $\lVert\mathbf S_M\rVert$ is reported per
+orbit as the conditioning diagnostic. \wpref{WP1}
+
+The objective is not convex in the integer variables, so the descent is
+started from several points and the spread across starts is reported rather
+than suppressed \wpref{WP3}.
+
+\paragraph{The outer bisection needs a monotonicity check.} For a global
+minimizer the attained work $W(\lambda)$ is non-increasing in $\lambda$, which
+is what licenses bisecting on it. What Algorithm~\ref{alg:descent} returns is a
+best-of-starts local solution, and nothing guarantees that the basin it lands
+in varies monotonically. We therefore sweep $\lambda$ on a dense logarithmic
+grid before any campaign run and verify that the best-of-starts $W(\lambda)$ is
+non-increasing. Where it is, bisection is used. Where it is not, the bisection
+is abandoned for that orbit and the schedule is chosen as the feasible grid
+point with the smallest $J$, which is a weaker procedure but not an unsound
+one; the orbits on which this happens are counted and reported. \wpref{WP3}
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Starting schedules for Algorithm~\ref{alg:descent} and the spread of
+  the attained objective across them. Declared before the runs.}
+  \label{tab:starts}
+  \begin{tabular}{@{}llc@{}}
+    \toprule
+    Start & Rationale & Median $J/J_{\mathrm{best}}$ \\
+    \midrule
+    \Fop    & constant degree at the budget & \ph{value} \\
+    \Rrad   & budget-calibrated radial endpoint & \ph{value} \\
+    \Rint   & interior member & \ph{value} \\
+    \Asens  & separable sensitivity-weighted solution & \ph{value} \\
+    random $\times\,8$ & spread & \ph{value}--\ph{value} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Certificate: convex-hull relaxation and a Frank--Wolfe gap}
+\label{sec:algorithm-certificate}
+
+Calling the descent result a benchmark requires knowing how far it can be from
+the best possible schedule. Relax each \emph{decision interval} to the convex
+hull of its candidate contributions,
+
+\begin{equation}
+  \mathbf u_i \;=\; \sum_{N\in\mathcal{N}}\theta_{g(i)N}\,\mathbf u_i(N),
+  \qquad
+  \theta_{qN}\ge0, \quad \sum_N \theta_{qN}=1,
+  \qquad
+  \sum_q W_q \sum_N \theta_{qN}N^2 \;\le\; B .
+  \label{eq:relaxation}
+\end{equation}
+
+Every integer schedule is feasible here with $\theta$ an indicator and attains
+the same objective, so the relaxed optimum $J^{*}_{\mathrm{rel}}$ is a lower
+bound on the integer optimum $J^{*}$. The relaxed problem minimizes the convex
+quadratic $J$ over a convex set, and its linear subproblem
+
+\begin{equation}
+  \mathbf s \;\in\; \argmin_{\theta \text{ feasible}}\;
+  \langle \nabla J(\mathbf u), \mathbf u(\theta)\rangle
+  \label{eq:fw-subproblem}
+\end{equation}
+
+decouples across decision intervals under a single multiplier on the budget. It
+therefore has the same epoch-separable, single-multiplier \emph{structure} as
+the sensitivity-weighted allocation of Section~\ref{sec:benchmark-sens}, but it
+is not the same problem: its per-interval objective is
+$\langle\nabla_q J,\mathbf u_q(N)\rangle$ rather than
+$\sum_{i\in I_q}\Delta t_i\Delta\mathbf a_i^{\top}\mathbf K_i\Delta\mathbf a_i$,
+and
+$\nabla J = 2\mathbf Q\mathbf u$ depends on the current relaxed iterate.
+Frank--Wolfe therefore applies with an
+$\mathcal{O}(M\lvert\mathcal{N}\rvert)$ iteration
+\citep{frank1956algorithm,jaggi2013revisiting}, and its duality gap supplies
+the bound directly:
+
+\begin{equation}
+  J(\mathbf u) + \langle\nabla J(\mathbf u),\,\mathbf s-\mathbf u\rangle
+  \;\le\; J^{*}_{\mathrm{rel}} \;\le\; J^{*}
+  \;\le\; J(\mathbf u_{\mathrm{descent}}) .
+  \label{eq:certificate}
+\end{equation}
+
+Write $L_{\mathrm{FW}}$ for the best (largest) value the left-hand side attains
+over the iteration budget and $J_{\mathrm{desc}}$ for the descent objective.
+Because the objective is a squared error, a gap in $J$ and a gap in $E$ are not
+the same number, so both are defined and the threshold is fixed on the second:
+
+\begin{equation}
+  g_J \;=\; \frac{J_{\mathrm{desc}}-L_{\mathrm{FW}}}{J_{\mathrm{desc}}},
+  \qquad
+  g_E \;=\; 1-\sqrt{\frac{L_{\mathrm{FW}}}{J_{\mathrm{desc}}}}
+  \;=\; 1-\sqrt{1-g_J} .
+  \label{eq:certified-gap}
+\end{equation}
+
+$g_E$ is the quantity the paper's claims are in --- it states that the
+descent schedule's position error is within $g_E$ of the best error any
+schedule of this class could achieve --- and the naming rule below is bound to
+it. A $10\%$ error gap corresponds to $g_J\approx19\%$.
+
+Two degenerate cases are handled by rule rather than by judgement. The
+Frank--Wolfe bound is valid but can be vacuous early in the iteration, where
+the left-hand side of Eq.~\eqref{eq:certificate} may fall below zero; since
+$J\ge0$ always, $L_{\mathrm{FW}}$ is taken as
+$\max\{0,\ \text{best bound}\}$. If $L_{\mathrm{FW}}=0$ when the iteration
+budget is exhausted, the certificate is vacuous, no gap is reported for that
+orbit, and the orbit is counted in a separate column rather than dropped.
+
+\paragraph{The subproblem must be solved exactly.} The bound in
+Eq.~\eqref{eq:certificate} is valid only if $\mathbf s$ attains the minimum of
+Eq.~\eqref{eq:fw-subproblem} over the \emph{relaxed} feasible set. Stopping the
+multiplier bisection at the nearest schedule whose integer budget falls below
+$B$ does not do that: it returns a feasible point, not a minimizer, and the
+resulting quantity is no longer a lower bound. Because
+Eq.~\eqref{eq:relaxation} permits fractional mixing, the budget can be met with
+equality --- at the critical multiplier the solution mixes the two adjacent
+degrees of the affected intervals with the weights that saturate the
+constraint. The implementation constructs that mixture explicitly and asserts
+$\lvert\sum_q W_q\sum_N\theta_{qN}N^2 - B\rvert$ at machine
+precision on every iteration; a run in which the assertion fails produces no
+certificate.
+
+\paragraph{What the certificate does and does not license.} It bounds the
+distance to the best schedule \emph{of this problem}: the first-order
+displacement along a fixed reference trajectory, on a fixed accumulation grid,
+over a discrete degree set. It says nothing about the nonlinear trajectory,
+which Section~\ref{sec:campaign-fixedpoint} tests separately. We adopt the
+naming rule fixed before the runs: the quantity is called an \emph{oracle} only
+if the median $g_E$ of Eq.~\eqref{eq:certified-gap} is below $0.10$ and no more
+than \ph{n} orbits return a vacuous certificate; otherwise it is reported as a
+\emph{linearized trajectory-aware allocation benchmark} and every ratio taken
+against it is read as conservative, in the same sense the previous paper's
+force-level Lagrangian benchmark was.
+
+\dnote{One of the two names has to be chosen once Table~\ref{tab:certificate}
+exists, and the choice is bound to the gap number rather than to the result.
+If the gap is large, delete the word ``oracle'' from the whole manuscript ---
+including the abstract --- rather than qualifying it in place.}
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Certified gap between the Frank--Wolfe lower bound and the
+  coordinate-descent schedule, by design and budget. \ph{fill from WP7}}
+  \label{tab:certificate}
+  \begin{tabular}{@{}lccccccc@{}}
+    \toprule
+    Design & $\beta$ & $L_{\mathrm{FW}}$ & $J_{\mathrm{desc}}$ & $g_J$ & $g_E$
+      & worst $g_E$ & vacuous \\
+    \midrule
+    A & $1.00$ & \ph{value} & \ph{value} & \ph{pct} & \ph{pct} & \ph{pct} & \ph{n} \\
+    B & $1.00$ & \ph{value} & \ph{value} & \ph{pct} & \ph{pct} & \ph{pct} & \ph{n} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Cost of the solve}
+
+\ph{one paragraph} Table build per orbit; sweep count to convergence;
+Frank--Wolfe iterations to a useful gap; memory of the vector table at the
+converged accumulation grid. None of this is charged to the flight budget ---
+the benchmark is not flown --- but it decides what is feasible to run across a
+campaign, and the controller of Section~\ref{sec:controller} inherits a
+reduced form of it, which \emph{is} charged. \wpref{WP1, WP3, WP7}

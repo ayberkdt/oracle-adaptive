@@ -1,0 +1,65 @@
+\section{Related work}
+\label{sec:related}
+
+\subsection{Truncation-degree selection}
+
+\ph{one paragraph} Attenuation-only thresholds, degree-variance criteria in the
+Meissl / Lowes--Mauersberger form \citep{RummelVanGelderen1995,Lowes1966}, and
+Kaula-type spectral rules \citep{kaula1966theory}. Radius-driven selection
+during propagation \citep{atallah2022radial}. What all of these share is that
+the selection functional is the local force error, evaluated pointwise.
+
+\subsection{Budgeted allocation}
+
+The separable case is classical. Allocating a scalar budget over independent
+items through a single multiplier is Everett's generalized Lagrange multiplier
+method \citep{everett1963generalized}, and the discrete form used for a set of
+quantizers is the standard treatment in rate--distortion-style bit allocation
+\citep{shoham1988efficient}, which also records that over a discrete set the
+multiplier sweep recovers only supported efficient solutions, so a duality gap
+may remain. The previous paper used exactly that construction at force level.
+
+What changes here is that the objective couples the items, so neither result
+applies directly. The coupled form of Eq.~\eqref{eq:allocation} is an integer
+quadratic program with a single knapsack constraint, a class with its own
+literature \ph{position against the quadratic-knapsack and integer-QP
+literature; the citation pass supplies the references}. What that literature
+supplies is the expectation of what is achievable --- a good feasible point and
+a relaxation bound rather than a certified optimum --- and that is what
+Section~\ref{sec:algorithm} delivers. What it does not supply is the
+$\max(i,k)$ structure of Eq.~\eqref{eq:Q-structure}, which is specific to the
+objective being a quadrature over prefix sums and is what makes a sweep linear
+rather than quadratic in the number of epochs. From the separable literature,
+what carries over is the language: an \emph{attainable} allocation reported as
+such rather than as a bound.
+
+\subsection{Goal-oriented error control}
+
+Weighting a local residual by the sensitivity of a functional of interest is
+the dual-weighted-residual idea in adaptive finite elements
+\citep{becker2001optimal}, and the distinction it draws --- between a residual
+norm and an adjoint-weighted residual --- is the same distinction the previous
+paper measured in this setting. Two things separate the present problem from
+that literature. The functional here is quadratic in an integral of the
+residual rather than linear in it, so the weighting is not a scalar field;
+and the control variable is a discrete degree with a quadratic cost, so the
+adaptivity decision is a budgeted integer allocation rather than a refinement
+flag.
+
+\subsection{Sensitivity in astrodynamics}
+
+The state-transition matrix and the variational equations that generate it are
+standard \citep[Ch.~4]{tapley2004statistical}. Mapping geopotential
+coefficients to radial, transverse and normal position error analytically about
+a Kepler orbit is classical \citep{rosborough1987radial}. \ph{one or two
+sentences} on what is different here: the mapping is used forward, as an
+allocation weight, and it is driven by a truncation defect rather than by an
+estimation residual or a single coefficient.
+
+\subsection{Multifidelity models}
+
+\ph{short paragraph} \citep{peherstorfer2018multifidelity,
+jones2019multifidelity}. The degree schedule is a fidelity schedule, and the
+question of where to spend fidelity under a budget is shared; what is specific
+here is that the low-fidelity model's error has an exploitable sign structure
+along the trajectory.
