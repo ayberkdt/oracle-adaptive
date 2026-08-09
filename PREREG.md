@@ -139,14 +139,24 @@ girmesi zorunlu — aksi hâlde eğrinin bir ucu hiç propagasyon şansı bulama
   o da eşitse daha düşük `J`.
 - Panel sonrası aday **eklenemez**.
 
-### Sertifika metriği ve dil kuralı
-Metrik dondurulmuştur (D29): `g_J = (J_desc − L_FW)/J_desc`,
-`g_E = 1 − √(L_FW/J_desc)`; `L_FW = max{0, en iyi FW sınırı}`.
-**Eşik hata uzayındadır: medyan `g_E < 0.10`** (≈ `g_J 0.19`). `L_FW = 0`
-kalan yörüngeler "boş sertifika" olarak ayrı sayılır ve eşiğe girmez.
-Bu eşik sağlanırsa `A-sign` metinde "oracle" olarak adlandırılabilir. Aksi hâlde "linearized trajectory-aware allocation
-benchmark" ve *erişilebilir tahsis, sınır değil* dili kullanılır. Bu karar
-sonuca değil, boşluk sayısına bağlıdır ve burada peşinen bağlanmıştır.
+### Çözücü doğrulaması ve dil kuralı
+**Kural tüketim panelindedir (D178).** Panel: her örnekte `|𝒩|^K` çizelgenin
+tamamı sayılır (`K ≤ 12`, `|𝒩| = 3`) ve `r = J_desc / J*_tam` raporlanır.
+**Eşik: panelin tamamında `r = 1`.** En kötü `r` kesirin yanında durur.
+Bu eşik sağlanırsa `A-sign` metinde "oracle" olarak adlandırılabilir; aksi
+hâlde "linearized trajectory-aware allocation benchmark" ve *erişilebilir
+tahsis, sınır değil* dili kullanılır. Panelin kapsamı da yazılır: optimallik
+yalnız tüketilen örnekler için kurulur, `K = 810` hakkında iddia yoktur.
+
+**Sertifika ikincil tanıdır.** Metrik dondurulmuş kalır (D29):
+`g_J = (J_desc − L_FW)/J_desc`, `g_E = 1 − √(L_FW/J_desc)`;
+`L_FW = max{0, en iyi FW sınırı}`. İkisi de raporlanır ama **eşik taşımaz** —
+gevşetmenin tamsayı boşluğu aralık sayısıyla daralmadığı ölçüldüğü için
+(`1.00/1.00/1.00/2.13/1.32`), `g_E`'ye konan bir eşik çizelgeyi değil o
+örnekte gevşetmenin sıkılığını test ederdi. `L_FW = 0` kalan yörüngeler
+"boş sertifika" olarak ayrı sayılır.
+
+Bu karar sonuca değil ölçüme bağlıdır ve burada peşinen bağlanmıştır.
 
 ### Karar kapısı G5b
 En iyi adayın **öngörülen** yakalama oranı `f̂ ≥ 0.15`. Altında M3'e propagasyon

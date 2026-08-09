@@ -32,7 +32,7 @@ STAGE = r"\|\s*\*{0,2}M%d\*{0,2}\s*\|[^|]*\|\s*~?(\d+)\s*\|"
 # baska yerde tamamen eksik olmasini mesru kilmaz.
 REQUIRED = {
     "G5b esigi f-hat":     {"PREREG.md", "ROADMAP.md"},
-    "sertifika esigi g_E": {"PREREG.md", "NOTATION.md"},
+    "tuketim paneli tavani": {"PREREG.md", "NOTATION.md", "WP.md"},
     "ablasyon sayisi":     {"PLAN.md"},
     "M3 yay (tablo)":      {"ROADMAP.md"},
     "M4 yay (tablo)":      {"ROADMAP.md"},
@@ -51,7 +51,11 @@ PROBES = {
     # referans cizgisi. Deger yine tek olmali, yoksa iki farkli cizgi cizilir.
     "kappa tani referansi": (KAPPA + r"[^\n]{0,25}?" + GE + r"\s*(0\.\d+)", "0.7"),
     "G5b esigi f-hat":     (FHAT + r"\s*" + GE + r"\s*(0\.\d+)", "0.15"),
-    "sertifika esigi g_E": (r"g_E\s*<\s*(0\.\d+)", "0.10"),
+    # D178: adlandirma kurali sertifikadan tuketim paneline tasindi. Eski
+    # "medyan g_E < 0.10" esigi KALDIRILDI; check_stale.py onu geri
+    # getirmeye calisan metni yakaliyor. Buradaki sayi panelin tavani:
+    # tuketilebilir her ornekte cozucu tam optimumu bulmali.
+    "tuketim paneli tavani": (r"`r = (1)`", "1"),
     "ablasyon sayisi":     (r"(\d+)\s*ablasyon\b", "14"),
     "aday paneli":         (r"(\d+)\s*yörüngelik perilun-tabakalı panel", "26"),
     "ablasyon paneli":     (r"(\d+)\s*yörüngelik küçük panel", "8"),

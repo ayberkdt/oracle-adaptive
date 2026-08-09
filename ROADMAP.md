@@ -95,7 +95,7 @@ Bu turda kapandı: `tables.py`, `kernel.py`, `allocate/`, `policies.py`,
   `πr/N` = 48/19/10 km).
 - **Q15** yazılmadı: hızlı alan değerlendirme literatürüne karşı konum;
   §7.1'in çözünürlük argümanı alanın kendisi için de kurulmalı.
-- 296 `\ph` yer tutucusu, 11 `\dnote`.
+- 314 `\ph` yer tutucusu, 11 `\dnote`.
 
 ### Depo
 
@@ -157,8 +157,9 @@ yalnızca D120 ile düşer.
 
 ## M2 — Denetleyici tasarımı ve eleme (propagasyonsuz)
 
-WP7 (sertifika), WP8 (pilot STM), WP9 (IFBDA), WP10 (`C-fb`), WP11 (koşullu),
-WP12 (biçim kontrolleri), WP13 (varyasyonel eleme).
+WP7 (sertifika, ikincil), **WP7b (tüketim paneli)**, WP8 (pilot STM),
+WP9 (IFBDA), WP10 (`C-fb`), WP11 (koşullu), WP12 (biçim kontrolleri),
+WP13 (varyasyonel eleme).
 
 **Maliyet uyarısı — bu aşama ucuz değil.** Her varyasyonel çözüm bir
 propagasyona mal oluyor. 6 aday × 26 yörüngelik panel = 156 çözüm, artı **14**
@@ -187,7 +188,7 @@ için propagasyon harcamamak.
 | Problemin ayrıştırılamaz olduğu | çok yüksek |
 | `Q` / çekirdek formülasyonu | yüksek |
 | Koordinat inişinin **en iyi çözücü** olduğu | orta → **T1/T2 ölçer** |
-| `A-sign`'ın gerçek doğrusal-olmayan optimuma yakınlığı | bilinmiyor → sertifika + `A-sign+` |
+| `A-sign`'ın gerçek doğrusal-olmayan optimuma yakınlığı | **tüketim paneli** (`K ≤ 12`'de tam optimum) + `A-sign+`; sertifika ikincil |
 | Bant probunun **en iyi bilgi edinme** yöntemi olduğu | düşük/orta → **T6/T7 ölçer** |
 | IFBDA'nın **en iyi uçurulabilir denetleyici** olduğu | orta → **T3/T4/T5 ölçer** |
 | `C-plan`'ın küresel olarak en iyi yöntem olduğu | **hayır** |
@@ -213,7 +214,7 @@ ve M1/M2 kapılarından gelir; hiçbiri ek yay istemez.
 | **T6a** düzgün-durum uyumu | `≥ 0.60` | kazanç doku değil **geometri** | prob gereksiz; ucuz durum-geri-besleme politikası |
 | **T6a / T6b** | `T6a ≤ 0.25`, T6b yükseliyor | kazanç gerçekten dokuda | prob veya vektör-vekil; **T7 Pareto'su** seçer |
 | **T1** boşluk ayrışması | iniş terimi baskın | çözücü zayıf | `S-round`/MIQP; kanonik çözücü değişebilir |
-| **T1** | gevşetme terimi baskın | çözücü iyi | çözücüye yatırım yok; `g_E` muhafazakârlık olarak raporlanır |
+| **T1** | gevşetme terimi baskın | çözücü iyi | çözücüye yatırım yok; `g_E` muhafazakârlık olarak raporlanır. **Ölçüldü (D178):** tamsayı boşluğu `K` ile daralmıyor, yani terim gerçekten baskın ve `g_E` bir çözücü ölçütü değil |
 | `T_coh` (WP6) | `≪ T` | plan bayatlıyor | alıcı-ufuk gerçekten gerekli (WP11 tetiklenir) |
 | `A-sign+` ≠ `A-sign` | ciddi fark | doğrusallaştırma bağlayıcı | yeniden-planlama mimarisi |
 

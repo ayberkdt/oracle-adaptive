@@ -221,10 +221,11 @@ the same number, so both are defined and the threshold is fixed on the second:
   \label{eq:certified-gap}
 \end{equation}
 
-$g_E$ is the quantity the paper's claims are in --- it states that the
-descent schedule's position error is within $g_E$ of the best error any
-schedule of this class could achieve --- and the naming rule below is bound to
-it. A $10\%$ error gap corresponds to $g_J\approx19\%$.
+$g_E$ states that the descent schedule's position error is within $g_E$ of the
+best error any schedule of this class could achieve. A $10\%$ error gap
+corresponds to $g_J\approx19\%$. It is reported for every orbit and it carries
+no threshold; what the naming rule is bound to is the exhaustive panel of
+Section~\ref{sec:algorithm-exhaustive}.
 
 Two degenerate cases are handled by rule rather than by judgement. The
 Frank--Wolfe bound is valid but can be vacuous early in the iteration, where
@@ -284,18 +285,62 @@ fails produces no bound.
 distance to the best schedule \emph{of this problem}: the first-order
 displacement along a fixed reference trajectory, on a fixed accumulation grid,
 over a discrete degree set. It says nothing about the nonlinear trajectory,
-which Section~\ref{sec:campaign-fixedpoint} tests separately. We adopt the
-naming rule fixed before the runs: the quantity is called an \emph{oracle} only
-if the median $g_E$ of Eq.~\eqref{eq:certified-gap} is below $0.10$ and no more
-than \ph{n} orbits return a vacuous certificate; otherwise it is reported as a
-\emph{linearized trajectory-aware allocation benchmark} and every ratio taken
-against it is read as conservative, in the same sense the previous paper's
-force-level Lagrangian benchmark was.
+which Section~\ref{sec:campaign-fixedpoint} tests separately.
 
-\dnote{One of the two names has to be chosen once Table~\ref{tab:certificate}
-exists, and the choice is bound to the gap number rather than to the result.
-If the gap is large, delete the word ``oracle'' from the whole manuscript ---
-including the abstract --- rather than qualifying it in place.}
+\subsection{What the certificate cannot settle, and what does}
+\label{sec:algorithm-exhaustive}
+
+The bound above is limited by the relaxation and not by the effort spent
+solving it. Solved to convergence with away steps, the relaxed optimum sits at
+\ph{value} of the true integer optimum on instances small enough to check, and
+the shortfall does not shrink with the number of decision intervals: it is the
+price of relaxing an integer schedule to a convex mixture, and no solver
+recovers it. A threshold on $g_E$ would therefore be testing how tight the
+relaxation happens to be on that instance, which is a property of the
+relaxation rather than of the schedule.
+
+What settles the question is enumeration. On instances with
+$K_{\mathrm{dec}}\le\ph{n}$ decision intervals and $\lvert\mathcal N\rvert=3$
+candidates, every feasible schedule is evaluated and the descent is compared
+against the true optimum rather than against a bound. Over the panel of
+\ph{n} such instances the descent returned the exact optimum in \ph{n} of
+them, with a worst-case ratio of \ph{value}.
+
+This establishes optimality \emph{for the instances enumerated}. It says
+nothing about $K_{\mathrm{dec}}=\ph{n}$ beyond the ordinary inductive weight of
+a solver that has not been caught suboptimal where it could be checked, and we
+do not ask it to. The naming rule is bound to this panel: the quantity is
+called an \emph{oracle} only if the descent is exactly optimal throughout it;
+otherwise it is reported as a \emph{linearized trajectory-aware allocation
+benchmark} and every ratio taken against it is read as conservative, in the
+same sense the previous paper's force-level Lagrangian benchmark was.
+
+\dnote{One of the two names has to be chosen once
+Table~\ref{tab:exhaustive} exists, and the choice is bound to the panel rather
+than to the result. If the descent is ever caught suboptimal, delete the word
+``oracle'' from the whole manuscript --- including the abstract --- rather than
+qualifying it in place.}
+
+\begin{table}[!htbp]
+  \centering\small
+  \caption{Exhaustive verification of the declared solver. Every feasible
+  schedule is enumerated, so $J^{\star}$ is the true constrained integer
+  optimum and $r=J_{\mathrm{desc}}/J^{\star}$ needs no bound to interpret.
+  The relaxed optimum is shown beside it to make the point that the
+  certificate's ceiling is the relaxation: where $J^{\star}/L$ exceeds one, no
+  Frank--Wolfe effort closes the difference.
+  \ph{fill from WP7b}}
+  \label{tab:exhaustive}
+  \begin{tabular}{@{}lccccc@{}}
+    \toprule
+    $K_{\mathrm{dec}}$ & schedules & $J^{\star}$ & $L_{\mathrm{FW}}$
+      & $J^{\star}/L_{\mathrm{FW}}$ & $r$ \\
+    \midrule
+    \ph{n} & \ph{n} & \ph{value} & \ph{value} & \ph{value} & \ph{value} \\
+    \ph{n} & \ph{n} & \ph{value} & \ph{value} & \ph{value} & \ph{value} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \begin{table}[!htbp]
   \centering\small

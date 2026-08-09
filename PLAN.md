@@ -283,14 +283,27 @@ g_J = (J_desc − L_FW)/J_desc ,   g_E = 1 − √(L_FW/J_desc) = 1 − √(1−
 L_FW = max{0, iterasyonlar boyunca en iyi FW sınırı}
 ```
 
-`J = E²` olduğundan ikisi aynı sayı değil. **Eşik hata uzayında:** medyan
-`g_E < 0.10` (≈ `g_J 0.19`). `L_FW = 0` kalırsa sertifika boştur, o yörünge
-ayrı sütunda sayılır.
+`J = E²` olduğundan ikisi aynı sayı değil. `L_FW = 0` kalırsa sertifika
+boştur, o yörünge ayrı sütunda sayılır.
 
-**Dil kuralı:** medyan `g_E` 0.10'un altına inerse `A-sign` "oracle" olarak
+**Sertifika ikincil tanıdır (D178).** Gevşetme yakınsamaya kadar
+çözüldüğünde kalan tamsayı boşluğu gerçek bir yayda `K = 4/6/8/10/12` için
+`1.00 / 1.00 / 1.00 / 2.13 / 1.32` ölçüldü: aralık sayısıyla daralmıyor ve
+düzgün değil. Sertifikalı boşluğa konan bir eşik, çizelgenin değil o örnekte
+gevşetmenin özelliğini ölçerdi. Sertifika yine hesaplanır ve raporlanır —
+`K = 810`'da elde kalan tek ifadedir — ama adı belirlemez.
+
+**Birincil doğrulama tüketim panelidir.** `|𝒩|^K` çizelgenin tamamı sayılır
+(`K ≤ 12`), inişin döndürdüğü çizelge gerçek tamsayı optimumuyla
+karşılaştırılır. Pilotta `r = J_desc/J*` beş örneğin beşinde **tam 1.0000**
+çıktı. Bir sertifika en iyi hâlinde "hata cinsinden %13 içinde" der; tüketim
+"optimum" der.
+
+**Dil kuralı:** panel bütünüyle `r = 1` verirse `A-sign` "oracle" olarak
 adlandırılabilir. Aksi hâlde NOTATION §6'daki uzun ad kullanılır ve — önceki
 makalenin O26'da yaptığı gibi — *erişilebilir tahsis, sınır değil* denir;
-bildirilen boşluklar muhafazakârdır.
+bildirilen boşluklar muhafazakârdır. Panelin kapsamı da yazılır: optimallik
+yalnız tüketilen örnekler için kurulmuştur.
 
 ### 2.4 L2+ — doğrusallaştırma bağlayıcı mı
 

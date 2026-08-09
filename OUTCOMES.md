@@ -140,7 +140,7 @@ Sonuç değil, hata. Çoğu önceki kampanyada bilfiil yaşandı. Kontrolleri
 | **Hata düzeyi karışması** ★★★ | `Ê` (öngörülen) ile `E` (propagate) aynı sembolle yazılıp M1 sonucu M3 sonucu sanılıyor | NOTATION §3'te ayrı semboller; her hipotez satırında düzey yazılı |
 | **Anahtarlama serbestliği** ★★ | `A-sign` kazanıyor ama sebebi daha çok bilgi değil, dereceyi daha sık değiştirebilmesi | Karar uzayı `K_dec` boyutlu (D16); `C-plan` ile aynı karar ızgarasında; `Δt_dec` taraması |
 | **Yerel minimum şansı** ★ | Tek başlangıçtan çıkan çizelge tesadüfen iyi | Çok başlangıçlı koordinat inişi; yayılım raporlanır |
-| **Sertifikasız "oracle"** ★ | Üst sınır çözümüne tavan denmesi | **WP7**; medyan `g_E < 0.10` sağlanmazsa "oracle" kelimesi kullanılmaz (D29) |
+| **Doğrulanmamış "oracle"** ★ | Üst sınır çözümüne tavan denmesi | **WP7b tüketim paneli**; panelin tamamında `r = 1` sağlanmazsa "oracle" kelimesi kullanılmaz (D178). Sertifika ikincil tanıdır ve eşik taşımaz |
 | **Yuvarlama şansı** | Hata derecede monoton değil; komşu dereceler mertebe farkı | Derece merdiveni taraması |
 | **Bin/ızgara bağımlılığı** | Sonuç çizelgenin biçimine (faz-indeksli vs irtifa-binli) veya karar ızgarasına ait | WP12 |
 | **Çoklu karşılaştırma** | 6 aday × 5 bütçe × 5 popülasyon → biri hep kazanır | Eleme kuralı önceden; M3'e **tam iki** aday |
@@ -153,7 +153,7 @@ Sonuç değil, hata. Çoğu önceki kampanyada bilfiil yaşandı. Kontrolleri
 
 | # | Risk | Etki | Azaltım |
 |---|---|---|---|
-| R1 | Koordinat inişi kötü yerel minimuma takılır | `A-sign` tavan olmaktan çıkar | Çok başlangıçlı; yayılım raporlanır; WP7 alt sınırı bağımsız kontrol |
+| R1 | Koordinat inişi kötü yerel minimuma takılır | `A-sign` tavan olmaktan çıkar | Çok başlangıçlı; yayılım raporlanır; **WP7b tüketimle gerçeğe karşı** doğrulama, WP7 alt sınırı ikincil |
 | R2 | Sertifika boşluğu büyük kalır | "oracle" dili kullanılamaz | Dil kuralı peşinen bağlı (PREREG OA-02); *erişilebilir tahsis* dili |
 | R3 | Doğrusallaştırma düşük perilunde (31 km) geçersiz | Genlikler yanlış | Genlik yorumlanmaz, yalnız işaret; gradyan derecesi kontrolü |
 | R4 | Kaula genliği `d̂` gerçek `d`'yi kötü temsil eder | Uçurulabilir varyant çöker | `abl-kaula` ayrı ölçülür; `p_fit` yeniden kalibre edilebilir |

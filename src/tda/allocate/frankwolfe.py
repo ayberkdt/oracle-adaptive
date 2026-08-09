@@ -1,8 +1,27 @@
-"""The certificate: a convex-hull relaxation and a Frank--Wolfe lower bound.
+"""Secondary diagnostic: a convex-hull relaxation and a Frank--Wolfe bound.
 
-Calling the descent result a benchmark requires knowing how far it can be from
-the best possible schedule.  Relax each decision interval to the convex hull
-of its candidate contributions,
+**Read :mod:`tda.allocate.exhaustive` first.**  How far the descent is from
+the best available schedule is established by enumerating every feasible
+schedule on instances small enough to allow it; this module is what is left
+to say on the full-size problem, where enumeration is impossible.
+
+It was demoted on measurement rather than on taste.  With the relaxation
+solved to convergence, the remaining gap between the relaxed optimum and the
+true integer optimum was 1.00, 1.00, 1.00, 2.13 and 1.32 at four, six, eight,
+ten and twelve decision intervals on a real arc.  It does not shrink with the
+interval count and it is not smooth, so a threshold on the certified gap
+would be measuring how tight the relaxation happens to be on that instance ---
+a property of the relaxation, not of the schedule, and not one any solver can
+improve (``DECISIONS.md`` D178).  On the same instances the descent returned
+the exact optimum every time.
+
+The bound remains worth computing and reporting.  It is the only statement
+available at :math:`K_{\\mathrm{dec}}=810`, it is valid whenever it is
+non-vacuous, and where it is tight it is genuine evidence.  What it no longer
+does is decide what the benchmark is called.
+
+Relax each decision interval to the convex hull of its candidate
+contributions,
 
 .. math::
     \\mathbf u_i=\\sum_{N}\\theta_{g(i)N}\\,\\mathbf u_i(N),\\qquad
@@ -177,13 +196,17 @@ class Certificate:
         return (self.vacuous and self.descent_objective > 0.0
                 and self.relaxed_gap < 0.01 * self.descent_objective)
 
-    def earns_the_name(self, threshold: float = 0.10) -> bool:
-        """Whether the gap clears the naming rule's threshold.
+    def within(self, threshold: float) -> bool:
+        """Whether the bound places the schedule within ``threshold`` in error.
 
-        The rule is fixed before the runs and bound to :attr:`gap_error`, not
-        to the result: below the threshold the quantity may be called an
-        oracle, otherwise it is reported as a linearised trajectory-aware
-        allocation benchmark and every ratio against it read as conservative.
+        A neutral statement about this certificate, and no longer the
+        campaign's naming rule.  The rule moved to
+        :mod:`tda.allocate.exhaustive` when the relaxation's own integrality
+        gap was measured and found not to shrink with the interval count
+        (``DECISIONS.md`` D178): a threshold on :attr:`gap_error` would then
+        be testing how tight the relaxation happens to be on that instance,
+        which is not a property of the schedule and not something the solver
+        can improve.
         """
         return (not self.vacuous) and self.gap_error < threshold
 
@@ -195,6 +218,16 @@ def _feasible_set(problem: DescentProblem, budget: float):
     vector, all in the flattened ``(q, N)`` variable order.  Sparse because
     the equality block is :math:`K\\times KP` with exactly :math:`KP`
     non-zeros -- dense it would be a hundred gigabytes at campaign scale.
+
+    The knapsack row is divided through by the budget, so its entries and its
+    right-hand side are of order one against the simplex rows' exact ones.
+    Unscaled they are not: at a campaign ceiling the row holds values near
+    :math:`10^{7}` against a right-hand side near :math:`10^{9}`, and the
+    simplex then fails to satisfy its own feasibility tolerance --- observed
+    on a pilot arc, where the solver returned an answer it declined to certify
+    and :func:`linear_minimisation` refused it (``DECISIONS.md`` D179).
+    Dividing a constraint by a positive constant leaves the feasible set
+    unchanged, so this is a change of units and not of problem.
     """
     n_intervals = problem.n_intervals
     degrees = np.asarray(problem.candidate_degrees, dtype=float)
@@ -208,8 +241,8 @@ def _feasible_set(problem: DescentProblem, budget: float):
     b_eq = np.ones(n_intervals)
 
     work = (problem.time_weight[:, None] * degrees[None, :] ** 2).ravel()
-    a_ub = sparse.csr_matrix(work.reshape(1, -1))
-    return a_eq, b_eq, a_ub, np.array([budget]), work
+    a_ub = sparse.csr_matrix((work / budget).reshape(1, -1))
+    return a_eq, b_eq, a_ub, np.array([1.0]), work
 
 
 def objective_coefficients(problem: DescentProblem, gradient: Arr) -> Arr:
@@ -256,8 +289,13 @@ def linear_minimisation(problem: DescentProblem, gradient: Arr,
     """
     a_eq, b_eq, a_ub, b_ub, _ = _feasible_set(problem, budget)
     coefficients = objective_coefficients(problem, gradient)
+    # Scaled to unit magnitude for the same reason the knapsack row is: the
+    # gradient spans many orders along a Frank--Wolfe path, and the argmin of
+    # a linear objective is invariant under a positive rescaling.
+    largest = float(np.max(np.abs(coefficients)))
+    scaled = coefficients / largest if largest > 0.0 else coefficients
 
-    result = linprog(coefficients.ravel(), A_ub=a_ub, b_ub=b_ub,
+    result = linprog(scaled.ravel(), A_ub=a_ub, b_ub=b_ub,
                      A_eq=a_eq, b_eq=b_eq, bounds=(0.0, 1.0),
                      method="highs")
     if not result.success:

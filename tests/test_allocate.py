@@ -139,11 +139,19 @@ def test_the_error_gap_is_the_square_root_of_the_objective_gap(problem) -> None:
         1.0 - np.sqrt(1.0 - result.gap_objective), rel=1e-12)
 
 
-def test_the_naming_rule_is_bound_to_the_gap_not_the_result(problem) -> None:
+def test_the_certificate_no_longer_carries_the_naming_rule(problem) -> None:
+    """It reports a gap; it does not decide what the benchmark is called.
+
+    The rule moved to the exhaustive panel once the relaxation's integrality
+    gap was measured and found not to shrink with the interval count -- a
+    threshold on the certified gap would be testing the relaxation, not the
+    schedule.
+    """
     budget = _mid_budget(problem)
     optimum, _ = _exhaustive(problem, budget)
     result = certify(problem, optimum, budget, iterations=60)
-    assert result.earns_the_name(1.0) is not result.earns_the_name(0.0)
+    assert not hasattr(result, "earns_the_name")
+    assert result.within(1.0) is not result.within(0.0)
 
 
 def test_away_steps_do_not_change_what_the_bound_is(problem) -> None:
@@ -407,6 +415,34 @@ def test_the_separable_solver_reports_what_the_fill_did(problem) -> None:
     assert "fill_moves" in filled.diagnostics
     assert filled.objective <= plain.objective + 1e-12
     assert filled.work <= budget * (1.0 + 1e-9)
+
+
+def test_the_subproblem_survives_campaign_scale_units(problem) -> None:
+    """A ceiling in campaign units must not break the simplex.
+
+    Unscaled, the knapsack row holds values near 1e7 against a right-hand side
+    near 1e9 and HiGHS stops satisfying its own feasibility tolerance --- seen
+    on a real arc, where it returned an answer it declined to certify. The row
+    and the objective are therefore both normalised, which changes the units
+    and not the feasible set.
+    """
+    huge = _mid_budget(problem) * 1.0e9
+    scaled = DescentProblem(
+        contributions=problem.contributions,
+        kernel=problem.kernel,
+        interval_of=problem.interval_of,
+        time_weight=problem.time_weight * 1.0e9,
+        candidate_degrees=problem.candidate_degrees,
+        cell_slices=problem.cell_slices,
+    )
+    schedule = np.full(INTERVALS, DEGREES[1])
+    gradient = scaled.kernel.gradient(scaled.gather(schedule))
+    theta = linear_minimisation(scaled, gradient, huge)
+
+    assert np.allclose(theta.sum(axis=1), 1.0, atol=1e-9)
+    work = float((scaled.time_weight[:, None]
+                  * np.array(DEGREES, dtype=float) ** 2 * theta).sum())
+    assert work <= huge * (1.0 + 1e-9)
 
 
 def test_the_subproblem_solution_is_a_feasible_vertex(problem) -> None:

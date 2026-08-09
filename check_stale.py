@@ -22,6 +22,19 @@ FILES = (glob.glob("*.md")
          + ["paper/main.tex", "paper/preamble.tex"])
 
 STALE = [
+    # D178: adlandirma kurali sertifikadan tuketim paneline tasindi. Eski
+    # kural "medyan g_E < 0.10" bir ESIKTI; simdi g_E esiksiz raporlanan bir
+    # ikincil tanidir. Desen esik dilini arar, sayinin kendisini degil:
+    # g_E'yi rapor eden cumleler mesru, ona bir kapi bagliyanlar degil.
+    (r"g_E\s*<\s*0\.\d+|medyan\s*`?g_E`?\s*[<≥]|"
+     r"g_E[^\n]{0,80}(esik|eşik|threshold)|"
+     r"(esik|eşik|threshold)[^\n]{0,80}g_E",
+     "g_E artik esik tasimayan ikincil tani; kural tuketim panelinde",
+     "D178",
+     r"esik tasimaz|eşik taşımaz|esik bagli degil|eşik bağlı değil|"
+     r"hicbirine|hiçbirine|KALDIRILDI|no longer|ikincil|"
+     r"carries no threshold|would therefore be testing|"
+     r"property of the relaxation"),
     (r"piR/N|" + re.escape(BS) + r"pi R/N|πR/N",
      "yuzey yaricapi; uydu yaricapi olmali", "D63/D67",
      r"D3 |tarihsel"),

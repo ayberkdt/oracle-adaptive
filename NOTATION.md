@@ -586,19 +586,44 @@ numarası**, yani kalan ufuk hâlâ içeride. WP6 `c`'nin kararlılığını
 
   Metinde "without the reference trajectory or pointwise reference-field
   evaluations" biçimi kullanılır, "reference field unavailable" değil.
-- `A-sign` için **"oracle"** kelimesi, ancak sertifikalı boşluk eşiği
+- `A-sign` için **"oracle"** kelimesi, ancak **tüketim paneli** eşiği
   sağlanırsa kullanılır (aşağıda). Aksi hâlde **"linearized trajectory-aware
   allocation benchmark"**.
 
-### Sertifikalı boşluk — tanım dondurulmuş
+### Adlandırma kuralı — tüketim paneli (D178)
+
+Kural sertifikadan **tüketime taşındı**. Gerekçe ölçüm: gevşetme yakınsamaya
+kadar çözüldüğünde kalan tamsayı boşluğu `K = 4/6/8/10/12`'de sırasıyla
+`1.00 / 1.00 / 1.00 / 2.13 / 1.32` çıktı — aralık sayısıyla daralmıyor, düzgün
+değil, ve `K = 810`'a ekstrapole edilemez. Sertifikalı boşluğa konan bir eşik,
+o örnekte gevşetmenin ne kadar sıkı olduğunu ölçer; bu çizelgenin özelliği
+değildir ve hiçbir çözücü iyileştiremez.
+
+```
+tüketim paneli: |𝒩|^K çizelgenin tamamı sayılır (K ≤ 12, |𝒩| = 3)
+r = J_desc / J*_tam                       (örnek başına)
+```
+
+**Eşik: panelin tamamında `r = 1`** — yani ilan edilen çözücü, tüketimin
+mümkün olduğu her örnekte tam optimumu bulmalı. Pilotta beşte beş sağlandı.
+Panelin **en kötü** `r`'si kesirin yanında raporlanır: onda dokuz tam ve
+onuncuda %40 sapan bir çözücü, hiç %1'i geçmeyen bir çözücüden farklıdır.
+
+Panel yalnız **tükettiği örnekler için** optimallik kurar. `K = 810` hakkında
+söylediği tek şey, hiç suçüstü yakalanmamış bir çözücünün olağan tümevarımsal
+ağırlığıdır; metin bunu bu sözcüklerle yazar.
+
+### Sertifikalı boşluk — ikincil tanı, tanım dondurulmuş
 
 ```
 g_J = (J_desc − L_FW) / J_desc            (amaç uzayında)
 g_E = 1 − √(L_FW / J_desc) = 1 − √(1−g_J)  (hata uzayında)
 ```
 
-`J = E²` olduğu için ikisi aynı sayı değildir. **Eşik hata uzayında
-tanımlıdır:** medyan `g_E < 0.10` (kabaca `g_J ≈ 0.19`). İkisi de raporlanır.
+`J = E²` olduğu için ikisi aynı sayı değildir. İkisi de raporlanır, ama
+**hiçbirine eşik bağlı değildir** — sertifika `K = 810`'da elde kalan tek
+ifadedir, geçerli olduğunda gerçek kanıttır, ve sıkı çıktığı yörüngelerde
+tüketim panelinin söyleyemediğini söyler.
 
 `L_FW = max{0, iterasyonlar boyunca en iyi FW sınırı}` — FW dualite sınırı
 geçerlidir ama erken iterasyonlarda negatif çıkabilir ve `J ≥ 0` olduğundan

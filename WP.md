@@ -20,7 +20,8 @@ Sütunlar: **Soru** (ne cevaplıyor) · **Girdi** · **Çıktı** · **Maliyet**
 | WP4 | Izgara yakınsaması (`Δt_acc`, `Δt_dec`) | 0 | M1 | **çekirdek** |
 | WP5 | Bant probu — yön isabeti `κ` | 0 | M1 | **çekirdek** |
 | WP6 | Pilot yay tutarlılık ufku `T_coh` | ~10 pilot yay | M1 | **çekirdek** |
-| WP7 | Frank–Wolfe alt sınırı / sertifika | 0 | M2 | yüksek |
+| WP7 | Frank–Wolfe alt sınırı / sertifika (**ikincil tanı**, D178) | 0 | M2 | orta |
+| WP7b | **Tüketim paneli** — çözücünün gerçeğe karşı doğrulanması | 0 | M2 | **çekirdek** |
 | WP8 | Düşük-dereceli pilot STM | 0 | M2 | yüksek |
 | WP9 | IFBDA denetleyicisi `C-plan` | 0 | M2 | **çekirdek** |
 | WP10 | Bütçe geri beslemesi `C-fb` | 0 | M2 | orta |
@@ -254,13 +255,39 @@ Sütunlar: **Soru** (ne cevaplıyor) · **Girdi** · **Çıktı** · **Maliyet**
   iterasyonda LMO'nun bütçeyi makine hassasiyetinde karşıladığı doğrulanır ve
   kayda yazılır.
 - **Metrik (D29):** `g_J = (J_desc − L_FW)/J_desc`,
-  `g_E = 1 − √(L_FW/J_desc)`. **Eşik hata uzayında: medyan `g_E < 0.10`.**
-  İkisi de raporlanır.
+  `g_E = 1 − √(L_FW/J_desc)`. İkisi de raporlanır; **hiçbirine eşik bağlı
+  değil** (D178).
 - **Dejenere hâller:** `L_FW = max{0, en iyi sınır}` (FW sınırı erken
   iterasyonda negatif olabilir, `J ≥ 0`). İterasyon bütçesi bitince
   `L_FW = 0` ise sertifika **boş**: boşluk raporlanmaz, ayrı sütunda sayılır.
-- **Dil kuralı:** eşik sağlanırsa "oracle" denebilir; değilse NOTATION §6'daki
-  uzun ad + "erişilebilir tahsis" dili
+  Boşluğun **hangi** boşluk olduğu da ayrılır: `relaxed_gap` küçükken sınır
+  sıfırsa gevşetme gevşektir ve daha uzun koşu yardım etmez
+  (`structurally_vacuous`); büyükse yineleme yetmemiştir.
+- **Uygulama koşulları (pilotta ölçüldü):** iterasyon **sertifikalanan
+  çizelgeden** başlar — soğuk başlangıçta ileri yön her adımda kazanıyor,
+  away adımı hiç ateşlenmiyor (400 adımda `away/drop = 0/0`) ve sınır sıfırın
+  üstüne çıkmıyor. LP'nin sırt çantası satırı ve amaç vektörü **ölçeklenir**;
+  kampanya biriminde ölçeklenmemiş satır HiGHS'in uygunluk toleransını
+  aşıyor.
+- **Statü: ikincil tanı (D178).** `K = 810`'da elde kalan tek ifadedir ve
+  sıkı çıktığında gerçek kanıttır, ama adlandırma kuralını taşımaz.
+
+### WP7b — Tüketim paneli ★ (WP7'den ayrıldı, D178)
+- **Soru:** ilan edilen çözücü, doğrulanabildiği yerde optimumu buluyor mu?
+- **Yöntem:** `|𝒩|^K` çizelgenin **tamamı** sayılır (`K ≤ 12`, `|𝒩| = 3`),
+  `r = J_desc / J*_tam` raporlanır. `tda.allocate.exhaustive`.
+- **Neden sertifikanın yerine:** gevşetmenin tamsayı boşluğu `K` ile
+  daralmıyor (`1.00/1.00/1.00/2.13/1.32`), yani sertifika bir tavan taşıyor
+  ve o tavan çizelgenin değil gevşetmenin özelliği. Tüketim gerçeğe karşı
+  ölçüyor: sertifika en iyi hâlinde "%13 içinde" der, tüketim "optimum" der.
+- **Kapsam, açıkça:** optimallik yalnız tüketilen örnekler için kurulur;
+  `K = 810` hakkında iddia yok. Panel bunu raporlar, okuyucuya bırakmaz.
+- **Maliyet:** 0 yay — mevcut yayların karar ızgarası kabalaştırılır. Örnek
+  başına ~30 s.
+- **Çıktı:** `fraction_optimal`, **`worst_ratio`**, `median_ratio`; en kötü
+  vaka kesirin yanında durur.
+- **Dil kuralı:** panel bütünüyle `r = 1` verirse "oracle" denebilir; değilse
+  NOTATION §6'daki uzun ad + "erişilebilir tahsis" dili
 
 ### WP8 — Düşük-dereceli pilot STM
 - **Soru:** `Φ`, referans alan olmadan yeterince iyi elde edilebilir mi?

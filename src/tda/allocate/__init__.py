@@ -8,9 +8,18 @@ Four rungs of one ladder, sharing one budget contract:
 ``descent``
     ``A-sign``.  The only solver that sees the off-diagonal coupling, and the
     only one that is not exact --- it returns an attainable schedule.
+``exhaustive``
+    How far that schedule is from the optimum, by enumerating every feasible
+    schedule on instances small enough to allow it.  This is the primary
+    verification: it compares against truth rather than against a relaxation,
+    and on the pilot the descent was exactly optimal in every enumerable
+    instance.
 ``frankwolfe``
-    How far that schedule can be from the optimum, certified on a convex-hull
-    relaxation whose linear subproblem is solved as a linear programme.
+    The secondary diagnostic, for the full-size problem where enumeration is
+    impossible: a lower bound on a convex-hull relaxation whose linear
+    subproblem is solved as a linear programme.  Demoted from the primary role
+    once the relaxation's own integrality gap was measured and found not to
+    shrink with the interval count (``DECISIONS.md`` D178).
 ``rounding``
     ``S-round``, a second solver out of the same relaxation.  If it beats the
     descent it becomes the reported schedule and the descent the control.
@@ -32,6 +41,13 @@ from tda.allocate.descent import (
     DescentProblem,
     monotonicity_report,
     solve_descent,
+)
+from tda.allocate.exhaustive import (
+    VerificationRecord,
+    panel_summary,
+    schedule_count,
+    solve_exhaustive,
+    verify_schedule,
 )
 from tda.allocate.frankwolfe import (
     Certificate,
@@ -55,6 +71,7 @@ __all__ = [
     "Certificate",
     "DescentProblem",
     "ScheduleSolution",
+    "VerificationRecord",
     "argmax_rounding",
     "certify",
     "expand_to_cells",
@@ -63,11 +80,15 @@ __all__ = [
     "linear_minimisation",
     "monotonicity_report",
     "objective_coefficients",
+    "panel_summary",
     "round_and_polish",
+    "schedule_count",
     "schedule_work",
     "sensitivity_values",
     "solve_descent",
+    "solve_exhaustive",
     "solve_separable",
     "solve_to_budget",
     "sum_up_rounding",
+    "verify_schedule",
 ]
