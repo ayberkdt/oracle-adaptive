@@ -24,6 +24,7 @@ from tda.dynamics import (
     estimate_rhs_work_factor,
     estimate_syntheses_per_rhs,
     propagate,
+    propagate_schedule,
 )
 from tda.stm import symplectic_defect
 
@@ -228,3 +229,64 @@ def test_work_factor_prices_the_gradient_degree() -> None:
         pytest.approx(1.24)
     with pytest.raises(ValueError, match="positive"):
         estimate_rhs_work_factor(GradientConfig(), 0)
+
+
+# ---------------------------------------------------------------------------
+# Flying a schedule
+# ---------------------------------------------------------------------------
+
+
+def test_a_constant_schedule_reproduces_the_fixed_degree_arc(
+        circular_state, orbital_period, tight) -> None:
+    """The two code paths must agree where they overlap.
+
+    A one-interval schedule is a fixed degree, so any difference between
+    propagate_schedule and propagate is a bug in the schedule machinery and
+    not a property of switching.
+    """
+    field = J2Field(MU_MOON, R_MOON, J2_MOON)
+    times = np.linspace(0.0, orbital_period, 60)
+    edges = np.array([0.0, orbital_period])
+
+    plain = propagate(field, circular_state, times, 2, tight, None)
+    flown, work = propagate_schedule(field, circular_state, times, edges,
+                                     np.array([2]), tight)
+
+    assert flown.r == pytest.approx(plain.r, rel=1e-11, abs=1e-6)
+    assert work.calls == plain.n_rhs
+    assert work.quadratic == pytest.approx(4.0 * plain.n_rhs)
+    assert work.per_degree == {2: plain.n_rhs}
+
+
+def test_the_realized_work_is_counted_at_the_call_not_predicted(
+        circular_state, orbital_period, tight) -> None:
+    """Two degrees, and the split is measured rather than assumed uniform."""
+    field = J2Field(MU_MOON, R_MOON, J2_MOON)
+    times = np.linspace(0.0, orbital_period, 80)
+    edges = np.array([0.0, 0.5 * orbital_period, orbital_period])
+
+    _, work = propagate_schedule(field, circular_state, times, edges,
+                                 np.array([2, 4]), tight)
+
+    assert set(work.per_degree) == {2, 4}
+    assert sum(work.per_degree.values()) == work.calls
+    assert work.quadratic == pytest.approx(
+        4.0 * work.per_degree[2] + 16.0 * work.per_degree[4])
+    # Nominal work would split the calls evenly between the halves; the
+    # measured split need not, and that difference is the point.
+    assert work.mean_squared_degree == pytest.approx(
+        work.quadratic / work.calls)
+
+
+def test_a_schedule_that_does_not_match_its_edges_is_refused(
+        circular_state, orbital_period, tight) -> None:
+    field = J2Field(MU_MOON, R_MOON, J2_MOON)
+    times = np.linspace(0.0, orbital_period, 20)
+    with pytest.raises(ValueError, match="decision_edges must have"):
+        propagate_schedule(field, circular_state, times,
+                           np.array([0.0, orbital_period]),
+                           np.array([2, 4]), tight)
+    with pytest.raises(ValueError, match="must be positive"):
+        propagate_schedule(field, circular_state, times,
+                           np.array([0.0, orbital_period]),
+                           np.array([0]), tight)

@@ -55,13 +55,16 @@ from tda.stm import STATE_DIM
 
 __all__ = [
     "IntegrationError",
+    "RealizedWork",
     "ReferenceArc",
     "estimate_rhs_work_factor",
     "estimate_syntheses_per_rhs",
     "propagate",
+    "propagate_schedule",
 ]
 
 Arr = NDArray[np.float64]
+IntArr = NDArray[np.int_]
 
 STM_DIM = STATE_DIM * STATE_DIM
 
@@ -187,9 +190,165 @@ def _make_rhs(field: GravityField, degree: int, cfg: GradientConfig | None
     return rhs_variational
 
 
+@dataclass(frozen=True, slots=True)
+class RealizedWork:
+    """Gravity work a propagation actually spent, counted at the call.
+
+    Attributes
+    ----------
+    calls:
+        Right-hand-side evaluations the solver made.
+    quadratic:
+        :math:`\\sum_{\\text{calls}}N^2`.  This is :math:`B_2`, the quantity
+        the campaign's ceiling bounds, and it is *measured* here rather than
+        predicted from the schedule: an adaptive solver takes short steps
+        where a concentrated schedule runs its highest degrees, so the
+        realized sum is not the nominal :math:`\\int N^2\\dd t` and the
+        difference is exactly the leak the previous campaign reported.
+    per_degree:
+        Calls made at each degree, so the distribution can be read rather
+        than inferred from the total.
+
+    Notes
+    -----
+    Comparing two schedules "at equal budget" means comparing
+    :attr:`quadratic`, not the nominal work of the schedules that produced
+    them.  A schedule can be nominally cheaper and realized dearer.
+    """
+
+    calls: int
+    quadratic: float
+    per_degree: dict[int, int]
+
+    @property
+    def mean_squared_degree(self) -> float:
+        """:math:`B_2/N_{\\mathrm{RHS}}`, the mean squared degree per call."""
+        return self.quadratic / self.calls if self.calls else 0.0
+
+
+def _make_schedule_rhs(field: GravityField, edges: Arr, degrees: IntArr,
+                       tally: dict[int, int]) -> Callable[[float, Arr], Arr]:
+    """Equations of motion whose truncation degree is piecewise constant.
+
+    The degree is held over each decision interval, which is what every
+    policy in the campaign does, so the right-hand side is *discontinuous* at
+    the boundaries.  That is not smoothed: the solver's response to it --
+    shorter steps, more calls -- is the switching cost, and hiding it inside a
+    blend would remove a term the cost accounting is supposed to contain.
+    """
+    last = degrees.size - 1
+
+    def rhs(t: float, y: Arr) -> Arr:
+        slot = int(np.searchsorted(edges, t, side="right")) - 1
+        degree = int(degrees[min(max(slot, 0), last)])
+        tally[degree] = tally.get(degree, 0) + 1
+        dy = np.empty(STATE_DIM)
+        dy[0:3] = y[3:6]
+        dy[3:6] = field.acceleration(y[0:3], t, degree)
+        return dy
+
+    return rhs
+
+
 # ---------------------------------------------------------------------------
 # Propagation
 # ---------------------------------------------------------------------------
+
+
+def propagate_schedule(field: GravityField,
+                       state0: Arr,
+                       t_eval: Arr,
+                       decision_edges: Arr,
+                       degrees: IntArr,
+                       integrator: IntegratorConfig) -> tuple[ReferenceArc,
+                                                              RealizedWork]:
+    """Fly a piecewise-constant degree schedule and measure what it cost.
+
+    The propagation the campaign's constructive claim finally rests on.
+    Everything upstream is a first-order surrogate: :math:`J` predicts the
+    position error a schedule would produce, and the previous paper's whole
+    lesson is that a criterion which wins at one level can lose at the next.
+    This is what turns the prediction into a measurement.
+
+    Parameters
+    ----------
+    field:
+        Gravity field adapter.
+    state0:
+        Initial inertial state ``[r, v]``, shape ``(6,)``.
+    t_eval:
+        Output epochs, strictly increasing from zero.
+    decision_edges:
+        Interval boundaries, shape ``(K+1,)``, ascending.
+    degrees:
+        One truncation degree per interval, shape ``(K,)``.
+    integrator:
+        Tolerances and method.
+
+    Returns
+    -------
+    tuple of (ReferenceArc, RealizedWork)
+        The arc carries ``stm=None`` --- a schedule's variational equations
+        would need the gradient at the flown degree, which is a different
+        question --- and ``reference_degree`` is the largest degree flown,
+        recorded so the arc is not mistaken for a fixed-degree one.
+
+    Raises
+    ------
+    ValueError
+        If the shapes disagree, the edges are not ascending, or the schedule
+        is not covered by them.
+    IntegrationError
+        If the solver stops early.
+    """
+    state0 = np.asarray(state0, dtype=float)
+    t_eval = np.asarray(t_eval, dtype=float)
+    edges = np.asarray(decision_edges, dtype=float)
+    degrees = np.asarray(degrees, dtype=np.int64)
+    if state0.shape != (STATE_DIM,):
+        raise ValueError(f"state0 must have shape (6,), got {state0.shape}")
+    if edges.ndim != 1 or edges.size != degrees.size + 1:
+        raise ValueError(
+            f"decision_edges must have {degrees.size + 1} entries for "
+            f"{degrees.size} intervals, got {edges.size}")
+    if np.any(np.diff(edges) <= 0.0):
+        raise ValueError("decision_edges must be strictly increasing")
+    if t_eval[0] != 0.0 or not np.all(np.diff(t_eval) > 0.0):
+        raise ValueError("t_eval must be a strictly increasing grid from 0")
+    if np.any(degrees <= 0):
+        raise ValueError("every scheduled degree must be positive")
+
+    tally: dict[int, int] = {}
+    sol = solve_ivp(
+        _make_schedule_rhs(field, edges, degrees, tally),
+        (float(t_eval[0]), float(t_eval[-1])),
+        state0,
+        method=integrator.method,
+        t_eval=t_eval,
+        rtol=integrator.rtol,
+        atol=integrator.atol_vector(0),
+        max_step=integrator.max_step_s,
+    )
+    if not sol.success:
+        raise IntegrationError(
+            f"integration stopped at t={sol.t[-1] if sol.t.size else 0.0:.3f} s "
+            f"of {t_eval[-1]:.3f} s: {sol.message}")
+
+    work = RealizedWork(
+        calls=int(sum(tally.values())),
+        quadratic=float(sum(n * n * c for n, c in tally.items())),
+        per_degree=dict(sorted(tally.items())),
+    )
+    arc = ReferenceArc(
+        t=np.ascontiguousarray(sol.t),
+        r=np.ascontiguousarray(sol.y[0:3].T),
+        v=np.ascontiguousarray(sol.y[3:6].T),
+        stm=None,
+        reference_degree=int(degrees.max()),
+        gradient_degree=None,
+        n_rhs=int(sol.nfev),
+    )
+    return arc, work
 
 
 def propagate(field: GravityField,
