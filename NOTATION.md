@@ -146,9 +146,21 @@ pertürbasyonudur ve konum bloğu seçilmeden norm alınamaz (birim karışır):
 E² = (1/T) ∫₀^T ‖ H_r ∫₀^t Φ(t,τ) B Δa(τ) dτ ‖² dt      (birincil amaç)
 ```
 
-Ayrık hâlde `M_j = Φ(t_j,t_0)ᵀ H_rᵀ H_r Φ(t_j,t_0)`, dolayısıyla `M_j`, `A_i`
+Ayrık hâlde `M_j = Φ(e_j,t_0)ᵀ H_rᵀ H_r Φ(e_j,t_0)`, dolayısıyla `M_j`, `A_i`
 ve `Q_ik` blokları **6×6**'dır (`u_i` bir durum pertürbasyonu; seçim `M_j`'nin
-içinde). Terminal özel hâli:
+içinde).
+
+**İndis sözleşmesi (D153) — `i` hücre, `j` kenar, ve sonek `i+1`'den başlar:**
+
+```
+A_i = Σ_{j=i+1}^{M} ω_j M_j          (Σ_{j≥i} DEĞİL)
+K_i = (1/T) Bᵀ Φ(t_0,m_i)ᵀ A_i Φ(t_0,m_i) B
+```
+
+Hücre `i` ancak `e_{i+1}`'den itibaren hissedilir. `Σ_{j≥i}` yazmak nedensellik
+ihlalidir ve `J`'yi yapısal olarak yanlış verir.
+
+Terminal özel hâli:
 
 ```
 J_T = ‖ H_r Φ(t_M,t_0) Σ_i u_i ‖²

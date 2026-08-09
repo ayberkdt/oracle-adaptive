@@ -89,8 +89,8 @@ $\mathbf K(t,t)$:
   \mathbf B^{\top}\Phi(\tau,t)^{\top}\mathbf H_r^{\top}\mathbf H_r\,
   \Phi(\tau,t)\,\mathbf B\;\dd\tau ,
   \qquad
-  \mathbf K_i \;=\; \frac{1}{T}\,\mathbf B^{\top}\Phi(t_0,t_i)^{\top}
-  \mathbf A_i\,\Phi(t_0,t_i)\,\mathbf B ,
+  \mathbf K_i \;=\; \frac{1}{T}\,\mathbf B^{\top}\Phi(t_0,m_i)^{\top}
+  \mathbf A_i\,\Phi(t_0,m_i)\,\mathbf B ,
   \label{eq:local-sensitivity}
 \end{equation}
 
@@ -111,22 +111,31 @@ untouched.
 \subsection{Discretization}
 \label{sec:problem-discretization}
 
-Fix an accumulation grid $t_1,\dots,t_M$ with local steps $\Delta t_i$ --- not
-assumed uniform, for the reason given in Section~\ref{sec:problem-grids} ---
-let $\mathbf H_r=[\,\mathbf I_3\;\;\mathbf 0\,]$ select the position block, and
-write the transported epoch contribution and its partial sums as
+Fix an accumulation grid of $M$ cells with \emph{edges}
+$e_0=0<e_1<\dots<e_M=T$ and widths $\Delta t_i=e_{i+1}-e_i$ --- not assumed
+uniform, for the reason given in Section~\ref{sec:problem-grids}. Two index
+sets are in play and they are deliberately distinct: $i=0,\dots,M-1$ runs over
+\emph{cells}, whose midpoints $m_i$ carry the defect, and $j=0,\dots,M$ runs
+over \emph{edges}, where the objective is sampled. Keeping them apart is what
+the next paragraph is about; conflating them puts a term in the coupling that
+violates causality.
+
+With $\mathbf H_r=[\,\mathbf I_3\;\;\mathbf 0\,]$ selecting the position block,
 
 \begin{equation}
-  \mathbf u_i(N) = \Phi(t_0,t_i)\,\mathbf B\,\Delta\mathbf a(t_i,N)\,
+  \mathbf u_i(N) = \Phi(t_0,m_i)\,\mathbf B\,\Delta\mathbf a(m_i,N)\,
   \Delta t_i ,
   \qquad
-  \mathbf S_j = \sum_{i\le j}\mathbf u_i,
+  \mathbf S_j = \sum_{i\le j-1}\mathbf u_i,
   \qquad
-  \delta\mathbf r(t_j) = \mathbf H_r\,\Phi(t_j,t_0)\,\mathbf S_j ,
+  \delta\mathbf r(e_j) = \mathbf H_r\,\Phi(e_j,t_0)\,\mathbf S_j ,
   \label{eq:u-and-S}
 \end{equation}
 
-which uses only the cocycle property $\Phi(t_j,t_i)=\Phi(t_j,t_0)\Phi(t_0,t_i)$.
+using only the cocycle property $\Phi(e_j,m_i)=\Phi(e_j,t_0)\Phi(t_0,m_i)$.
+The prefix runs to $j-1$ because cell $i$ occupies $[e_i,e_{i+1}]$ and is
+therefore felt at edge $e_j$ exactly when $j\ge i+1$: at its own left edge the
+impulse has not yet happened, and $\mathbf S_0=\mathbf 0$.
 
 \paragraph{Which quadrature rule the prefix sum permits.} That
 $\mathbf S_j$ is a \emph{plain} prefix sum is not a notational convenience; it
@@ -138,18 +147,25 @@ $j$-dependent correction and forfeit the $\max(i,k)$ form. A rectangle rule
 keeps the structure but is first-order, which at two samples per correlation
 time is not a rounding detail.
 
-We therefore place the accumulation nodes at the \emph{midpoints} of the
-grid cells and sample the outer integral at the cell \emph{edges}. The inner
-weight is then the full cell width --- independent of $j$, so
-Eq.~\eqref{eq:Q-structure} holds verbatim --- while the rule itself is the
-midpoint rule and second-order, and $\mathbf S_j$ is exactly the inner
-integral up to edge $j{+}1$ rather than an approximation to it. The outer
-integral carries no prefix sum and is free to use the trapezoid rule on the
-edges. Both weight sets are non-negative, which is what
-Section~\ref{sec:problem-structure} needs.
+We therefore place the accumulation nodes at the \emph{midpoints} of the grid
+cells and sample the outer integral at the cell \emph{edges}. The inner weight
+is then the full cell width --- independent of $j$, so the $\max(i,k)$
+structure survives --- while the rule itself is the midpoint rule and
+second-order, and $\mathbf S_j$ is the exact prefix sum of that
+discretization through edge $j$. The outer integral carries no prefix sum and
+is free to use the trapezoid rule on the edges. Both weight sets are
+non-negative, which is what Section~\ref{sec:problem-structure} needs.
+
+The price of separating the two grids is that the suffix in
+Eq.~\eqref{eq:Q-structure} starts one index later than it would on a single
+grid, and that offset is not cosmetic: it is the difference between a
+discretization in which a cell influences the state \emph{after} it and one in
+which it also influences the state at its own left edge.
+
 The outer integral of Eq.~\eqref{eq:objective} is likewise a quadrature, with
-weights $\omega_j\ge0$ summing to $T$, so the discretized objective is a quadratic form
-in the stacked vector $\mathbf u=(\mathbf u_1,\dots,\mathbf u_M)$,
+weights $\omega_j\ge0$ summing to $T$, so the discretized objective is a
+quadratic form in the stacked vector
+$\mathbf u=(\mathbf u_0,\dots,\mathbf u_{M-1})$,
 
 \begin{equation}
   J(\mathbf u) \;=\; \frac{1}{T}\sum_{j} \omega_j\,
@@ -213,16 +229,26 @@ structure, however, is unusually favourable.
 \subsection{The structure that makes it cheap}
 \label{sec:problem-structure}
 
-Because $\mathbf S_j$ is a prefix sum, the block of $\mathbf Q$ coupling epochs
-$i$ and $k$ collects exactly those $j$ that see both, that is $j\ge\max(i,k)$:
+Because $\mathbf S_j$ is a prefix sum, the block of $\mathbf Q$ coupling cells
+$i$ and $k$ collects exactly those edges that see both. Cell $i$ is seen at
+edge $j$ when $j\ge i+1$, so the pair is seen when $j\ge\max(i,k)+1$:
 
 \begin{equation}
-  \mathbf Q_{ik} \;=\; \frac{1}{T}\!\!\sum_{j\ge\max(i,k)}\!\!\omega_j\,\mathbf M_j
+  \mathbf Q_{ik} \;=\; \frac{1}{T}\!\!\sum_{j\ge\max(i,k)+1}\!\!\omega_j\,
+  \mathbf M_j
   \;=\; \frac{1}{T}\,\mathbf A_{\max(i,k)} ,
   \qquad
-  \mathbf A_i = \sum_{j\ge i} \omega_j\,\mathbf M_j .
+  \mathbf A_i = \sum_{j= i+1}^{M} \omega_j\,\mathbf M_j .
   \label{eq:Q-structure}
 \end{equation}
+
+The offset by one is the whole content of separating cells from edges, and it
+is worth stating why it cannot be dropped. Writing $\mathbf A_i=\sum_{j\ge i}$
+instead would add $\omega_i\mathbf M_i$ to every suffix block, which credits
+cell $i$ with displacing the state at $e_i$ --- before its own impulse. The
+resulting form is not a small perturbation of the right one: on a random
+five-cell instance it misstates $J$ by $26\%$, and it breaks the identity
+between $\mathbf K_i$ and the diagonal of the kernel.
 
 The quadrature weights enter only inside the suffix sequence, so the structure
 that makes the problem tractable is untouched by a non-uniform grid. They are
@@ -277,10 +303,11 @@ candidate degrees therefore remains
 $\mathcal{O}(M\lvert\mathcal{N}\rvert)$. Section~\ref{sec:algorithm} uses this.
 
 The terminal-position objective is the special case in which the outer
-quadrature collapses onto the final epoch, $\omega_j = T\,\delta_{jM}$, that is
+quadrature collapses onto the final edge, $\omega_j = T\,\delta_{jM}$, so that
+$\mathbf A_i = T\,\mathbf M_M$ for every cell and
 
 \begin{equation}
-  J_T \;=\; \bigl\lVert\,\mathbf H_r\,\Phi(t_M,t_0)\textstyle\sum_i\mathbf u_i
+  J_T \;=\; \bigl\lVert\,\mathbf H_r\,\Phi(e_M,t_0)\textstyle\sum_i\mathbf u_i
   \,\bigr\rVert^2 ,
   \label{eq:terminal}
 \end{equation}

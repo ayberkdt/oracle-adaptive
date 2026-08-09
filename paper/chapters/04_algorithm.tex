@@ -48,11 +48,11 @@ and a sensitivity-weighted allocation.
   \For{each start $s\in\mathcal{S}$} \Comment{multi-start, \emph{not} one start}
     \State $N \gets s$
     \Repeat \Comment{inner: sweeps}
-      \State refresh prefix sums of $\mathbf u$ and suffix sums of
-        $\mathbf A_k\mathbf u_k$
-      \For{$q = 1 \dots K_{\mathrm{dec}}$}
-        \State update $N_q$ by Eq.~\eqref{eq:coordinate-update}; patch the two
-          running sums over $I_q$
+      \State build the suffix array $\sum_{k>i}\mathbf A_k\mathbf u_k$ once,
+        from the right \Comment{frozen for this sweep}
+      \For{$q = 1 \dots K_{\mathrm{dec}}$ \textbf{in temporal order}}
+        \State update $N_q$ by Eq.~\eqref{eq:coordinate-update}; carry the
+          change forward as a running prefix offset
       \EndFor
     \Until{no interval changes, or sweep limit}
     \State record the triple $\bigl(J_s,\;W_s,\;
@@ -108,6 +108,18 @@ Each sweep is $\mathcal{O}(M\lvert\mathcal{N}\rvert)$ by
 Eqs.~\eqref{eq:cross-term} and~\eqref{eq:within-block} --- grouping changes the
 number of decision variables but not the sweep cost --- and no field evaluation
 occurs inside the loop: the $\mathbf u_i(N)$ table is built once per orbit.
+
+That bound needs one asymmetry to hold, and it is easy to implement the wrong
+way. Updating interval $q$ changes $\mathbf u$ on $I_q$, which changes the
+prefix sum at every later cell and the suffix sum at every earlier one.
+Rewriting either array would cost $\mathcal{O}(M)$ per interval and
+$\mathcal{O}(MK_{\mathrm{dec}})$ per sweep. Neither is necessary. Sweeping in
+temporal order, the prefix change is a single constant carried forward as a
+running offset, and the suffix is only ever read to the right of $I_q$ --- a
+region this sweep has not touched --- so the array built at the start of the
+sweep stays valid throughout it. The stale suffix is not an approximation but
+the definition: it is what makes the update Gauss--Seidel in the intervals and
+Jacobi across the sweep.
 
 \paragraph{Summation.} The prefix sums are accumulated in compensated
 (Neumaier) arithmetic. This is not routine caution: $\mathbf S_j$ is a sum of

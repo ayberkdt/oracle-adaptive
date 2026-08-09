@@ -57,15 +57,26 @@ Biriktirme ızgarası `t_1..t_M` (`Δt_acc`, bkz. NOTATION §4). Konum seçicisi
 Izgara **düzgün varsayılmaz** (D55/D60); adım `Δt_i`, dış integral bir
 kuadratür, ağırlıklar `ω_j ≥ 0` toplamı `T`:
 
+**İki indis kümesi var ve bilerek ayrı (D153).** `i = 0..M−1` **hücreleri**
+sayar (orta noktası `m_i`, genişliği `Δt_i`), `j = 0..M` **kenarları**
+(`e_0=0 < … < e_M=T`). Hücre `i`, `[e_i, e_{i+1}]` aralığını kaplar ve
+**ancak `j ≥ i+1` kenarlarında hissedilir** — kendi sol kenarında darbe henüz
+olmamıştır.
+
 ```
-u_i(N) = Φ(t_0, t_i) B Δa(t_i, N) Δt_i
-S_j    = Σ_{i≤j} u_i
-δr_j   = H_r Φ(t_j, t_0) S_j
-M_j    = Φ(t_j,t_0)ᵀ H_rᵀ H_r Φ(t_j,t_0)
+u_i(N) = Φ(t_0, m_i) B Δa(m_i, N) Δt_i
+S_j    = Σ_{i ≤ j−1} u_i                    (S_0 = 0)
+δr_j   = H_r Φ(e_j, t_0) S_j
+M_j    = Φ(e_j,t_0)ᵀ H_rᵀ H_r Φ(e_j,t_0)
 J(u)   = (1/T) Σ_j ω_j Sⱼᵀ M_j Sⱼ = uᵀ Q u
 ```
 
-`Q_ik = (1/T) A_{max(i,k)}` ile `A_i = Σ_{j≥i} ω_j M_j`; bloklar **6×6**
+`Q_ik = (1/T) A_{max(i,k)}` ile **`A_i = Σ_{j=i+1}^{M} ω_j M_j`** — sonek
+`i`'den değil **`i+1`'den** başlar. `Σ_{j≥i}` yazmak her sonek bloğuna
+`ω_i M_i` ekler, yani hücreye kendi sol kenarındaki yer değiştirmeyi
+etkilemesini atfeder: **nedensellik ihlali.** Küçük bir örnekte `J`'yi %26
+yanlış veriyor ve `K_i` ile çekirdeğin köşegeni arasındaki özdeşliği bozuyor
+(D153, kaba kuvvetle doğrulandı). Bloklar **6×6**
 (`u_i` bir durum pertürbasyonu, seçim `M_j`'nin içinde). **Ağırlıklar yalnızca
 sonek dizisinin içine giriyor, yapı bozulmuyor** — makalenin matematik katkısı
 uyarlanabilir ızgarada aynen ayakta. Düzgün ızgarada `ω_j = Δt`, `T = MΔt` ve
