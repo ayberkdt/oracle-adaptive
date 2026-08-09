@@ -29,6 +29,7 @@ from tda.allocate import (
     argmax_rounding,
     certify,
     force_values,
+    greedy_fill,
     linear_minimisation,
     monotonicity_report,
     objective_coefficients,
@@ -327,6 +328,85 @@ def test_the_linearised_costs_match_a_direct_sum(problem) -> None:
         for p in range(len(DEGREES)):
             expected[q, p] += float(problem.contributions[i, p] @ gradient[i])
     assert coefficients == pytest.approx(expected, rel=1e-12, abs=1e-15)
+
+
+def _staircase():
+    """A criterion whose multiplier sweep provably stops short of the ceiling.
+
+    Four intervals, three candidates, unit weights. The middle candidate is
+    only slightly better than the cheapest, the expensive one much better --
+    so every multiplier that admits the expensive candidate admits it
+    everywhere and overruns, and the bisection falls back to a schedule with
+    room to spare.
+    """
+    values = np.array([[10.0, 9.5, 1.0]] * 4)
+    cost = np.array([[1.0, 4.0, 9.0]] * 4)
+    return values, cost
+
+
+def test_the_fill_spends_room_the_multiplier_sweep_cannot_reach() -> None:
+    values, cost = _staircase()
+    budget = 21.0                      # 9 + 9 + 1 + 1 fits; 9*3 does not
+    swept = np.zeros(4, dtype=np.int64)
+    filled, moves = greedy_fill(values, cost, swept.copy(), budget)
+
+    assert moves > 0
+    work = float(cost[np.arange(4), filled].sum())
+    assert work <= budget
+    assert work > float(cost[np.arange(4), swept].sum())
+    assert (float(values[np.arange(4), filled].sum())
+            < float(values[np.arange(4), swept].sum()))
+
+
+def test_the_fill_never_makes_the_criterion_worse() -> None:
+    """It is marginal analysis, not a rule that empties the budget.
+
+    The criterion is not monotone in degree --- the omitted tail is the norm
+    of a partial sum and dropping a band can leave a larger residual --- so a
+    fill that raised degrees until the money ran out would sometimes buy a
+    worse comparator, silently.
+    """
+    rng = np.random.default_rng(11)
+    for _ in range(40):
+        values = rng.uniform(0.1, 10.0, size=(6, 4))
+        cost = np.sort(rng.uniform(0.5, 6.0, size=(6, 4)), axis=1)
+        picked = rng.integers(0, 4, size=6)
+        budget = float(cost[np.arange(6), picked].sum()) * 1.5
+        before = float(values[np.arange(6), picked].sum())
+        filled, _ = greedy_fill(values, cost, picked.copy(), budget)
+        assert float(values[np.arange(6), filled].sum()) <= before + 1e-12
+        assert float(cost[np.arange(6), filled].sum()) <= budget * (1 + 1e-12)
+
+
+def test_a_schedule_at_its_best_returns_unchanged_with_zero_moves() -> None:
+    """Zero moves and no fill attempted have to stay distinguishable."""
+    values = np.array([[1.0, 5.0, 9.0]] * 3)      # cheapest is also best
+    cost = np.array([[1.0, 4.0, 9.0]] * 3)
+    picked = np.zeros(3, dtype=np.int64)
+    filled, moves = greedy_fill(values, cost, picked.copy(), 100.0)
+    assert moves == 0
+    assert filled.tolist() == picked.tolist()
+
+
+def test_the_fill_refuses_an_infeasible_starting_schedule() -> None:
+    values, cost = _staircase()
+    with pytest.raises(ValueError, match="the fill improves a feasible point"):
+        greedy_fill(values, cost, np.full(4, 2, dtype=np.int64), 10.0)
+
+
+def test_the_separable_solver_reports_what_the_fill_did(problem) -> None:
+    budget = _mid_budget(problem)
+    values = force_values(np.asarray(problem.contributions[:, :, :3]),
+                          np.ones(problem.contributions.shape[0]),
+                          problem.interval_of, INTERVALS)
+    plain = solve_separable(values, problem.time_weight, DEGREES, budget,
+                            fill=False)
+    filled = solve_separable(values, problem.time_weight, DEGREES, budget)
+
+    assert "fill_moves" not in plain.diagnostics
+    assert "fill_moves" in filled.diagnostics
+    assert filled.objective <= plain.objective + 1e-12
+    assert filled.work <= budget * (1.0 + 1e-9)
 
 
 def test_the_subproblem_solution_is_a_feasible_vertex(problem) -> None:

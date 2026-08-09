@@ -46,6 +46,7 @@ from tda.allocate.rounding import (
 )
 from tda.allocate.separable import (
     force_values,
+    greedy_fill,
     sensitivity_values,
     solve_separable,
 )
@@ -58,6 +59,7 @@ __all__ = [
     "certify",
     "expand_to_cells",
     "force_values",
+    "greedy_fill",
     "linear_minimisation",
     "monotonicity_report",
     "objective_coefficients",
