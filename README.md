@@ -84,7 +84,7 @@ M1'e alındı (D8, G3).
 | 4 | [OUTCOMES.md](OUTCOMES.md) | Sonuç bantları, sahte-iyi artefakt tablosu, risk sicili, erken uyarı göstergeleri |
 | 5 | [NOTATION.md](NOTATION.md) | **Dondurulmuş adlar ve tanımlar.** Politika kodları, maliyet düzeyleri, ızgaralar, terminoloji |
 | 6 | [PREREG.md](PREREG.md) | Üç ön-tescilin tam metin taslağı (OA-01/02/03) + WP21 dallanma eşikleri |
-| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D164** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
+| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D168** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
 | 8 | [paper/](paper) | LaTeX manuskript taslağı — `main.tex`, `chapters/`, `references.bib` |
 | 9 | [src/tda/](src/tda) | Kampanya kodu (aşağıdaki katman tablosu); [tests/](tests) altında birim testleri |
 
@@ -96,6 +96,7 @@ Bağımlılıklar tek yönlü; hiçbir modül yukarı bakmıyor.
 |---|---|---|---|
 | 0 | `config` | — | donmuş sabitler + provenance hash |
 | 0 | `stm` | — | `Φ` cebiri: simplektik ters, artık tanısı, satır/sütun dilimleri |
+| 0 | `kepler` | — | analitik iki-cisim propagasyonu (evrensel değişkenler) |
 | 0 | `analytic` | — | kapalı-form alanlar (nokta kütle, `J₂`) |
 | 1 | `field` | config | **korunan** alanı değerlendirmek: ivme, kesme kusuru, gradyan |
 | 1 | `grids` | config | `τ_corr` eşdağıtımı, orta nokta/kenar şeması, karar ızgarası |
@@ -103,6 +104,7 @@ Bağımlılıklar tek yönlü; hiçbir modül yukarı bakmıyor.
 | 2 | `tables` | field, grids, stm | `Δa(m_i,N)` memmap tablosu + taşımalar + provenance şeması |
 | 3 | `allocate/` | kernel, tables | `budget` · `separable` · `descent` · `frankwolfe` · `rounding` — **çözücüler** |
 | 2 | `kernel` | stm | `A_i` sonek dizisi, `J`, `c_i`, `∇J`, `K_i` — **makalenin matematik çekirdeği** |
+| 3 | `probe` | kepler, spectrum | bant probu: ileri öngörü, paylaşılan yığın, `κ` ve korunan kesir |
 | 2 | `spectrum` | field | **ihmal edilen** kuyruk: derece varyansları, `γ`, bant yığını |
 | 2 | `dynamics` | config, field, stm | referans yay + varyasyonel denklemler |
 
