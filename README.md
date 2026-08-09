@@ -84,7 +84,7 @@ M1'e alındı (D8, G3).
 | 4 | [OUTCOMES.md](OUTCOMES.md) | Sonuç bantları, sahte-iyi artefakt tablosu, risk sicili, erken uyarı göstergeleri |
 | 5 | [NOTATION.md](NOTATION.md) | **Dondurulmuş adlar ve tanımlar.** Politika kodları, maliyet düzeyleri, ızgaralar, terminoloji |
 | 6 | [PREREG.md](PREREG.md) | Üç ön-tescilin tam metin taslağı (OA-01/02/03) + WP21 dallanma eşikleri |
-| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D160** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
+| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D164** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
 | 8 | [paper/](paper) | LaTeX manuskript taslağı — `main.tex`, `chapters/`, `references.bib` |
 | 9 | [src/tda/](src/tda) | Kampanya kodu (aşağıdaki katman tablosu); [tests/](tests) altında birim testleri |
 
@@ -101,6 +101,7 @@ Bağımlılıklar tek yönlü; hiçbir modül yukarı bakmıyor.
 | 1 | `grids` | config | `τ_corr` eşdağıtımı, orta nokta/kenar şeması, karar ızgarası |
 | 1 | `policies` | — | komparatör çizelgeleri: `F-op`, `R-rad`, `R-int`, `F-env` |
 | 2 | `tables` | field, grids, stm | `Δa(m_i,N)` memmap tablosu + taşımalar + provenance şeması |
+| 3 | `allocate/` | kernel, tables | `budget` · `separable` · `descent` · `frankwolfe` · `rounding` — **çözücüler** |
 | 2 | `kernel` | stm | `A_i` sonek dizisi, `J`, `c_i`, `∇J`, `K_i` — **makalenin matematik çekirdeği** |
 | 2 | `spectrum` | field | **ihmal edilen** kuyruk: derece varyansları, `γ`, bant yığını |
 | 2 | `dynamics` | config, field, stm | referans yay + varyasyonel denklemler |
@@ -125,7 +126,8 @@ Lisans dosyası da henüz yok — public depo, karar bekliyor.
 
 **Neden alt klasör yok.** Alt paket, ≥2 kardeş modülü olduğunda açılır; tek
 dosyalık bir alt paket düz modülden kötüdür. Sırada olanlar zaten öyle
-gelecek: `allocate/` (separable, descent, frankwolfe, rounding),
+gelecek: **`allocate/` açıldı** (budget, separable, descent, frankwolfe,
+rounding);
 `controller/` (ifbda, plan, feedback), `analysis/` (WP21'in T1–T7'si).
 Şu anki yedi modül tek bir taban katmanı ve düz durması doğru.
 

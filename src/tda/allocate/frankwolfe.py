@@ -1,0 +1,266 @@
+"""The certificate: a convex-hull relaxation and a Frank--Wolfe lower bound.
+
+Calling the descent result a benchmark requires knowing how far it can be from
+the best possible schedule.  Relax each decision interval to the convex hull
+of its candidate contributions,
+
+.. math::
+    \\mathbf u_i=\\sum_{N}\\theta_{g(i)N}\\,\\mathbf u_i(N),\\qquad
+    \\theta_{qN}\\ge0,\\quad\\sum_N\\theta_{qN}=1,\\quad
+    \\sum_qW_q\\sum_N\\theta_{qN}N^2\\le B .
+
+Every integer schedule is feasible here with :math:`\\theta` an indicator and
+attains the same objective, so the relaxed optimum is a lower bound on the
+integer one, and Frank--Wolfe's duality gap supplies it directly:
+
+.. math::
+    J(\\mathbf u)+\\langle\\nabla J,\\mathbf s-\\mathbf u\\rangle
+    \\;\\le\\;J^{*}_{\\mathrm{rel}}\\;\\le\\;J^{*}\\;\\le\\;
+    J(\\mathbf u_{\\mathrm{descent}}) .
+
+The subproblem is solved as the linear programme it is
+------------------------------------------------------
+The bound is valid only if :math:`\\mathbf s` attains the minimum of the
+linearisation over the **relaxed** feasible set --- and over that set, not
+over its boundary.  Two ways to get this wrong, both tempting:
+
+*Forcing the budget to bind.*  The objective is not monotone in degree, and
+neither is :math:`\\langle\\nabla_qJ,\\mathbf u_q(N)\\rangle`, so the
+programme's optimum may leave slack.  Pushing it onto the budget surface
+returns a feasible point rather than a minimiser and the bound stops being one
+(``DECISIONS.md`` D142).
+
+*Mixing the wrong pair.*  At a critical multiplier a fractional solution mixes
+neighbouring vertices of the **lower convex envelope** of the points
+:math:`(N^2,\\langle\\nabla_qJ,\\mathbf u_q(N)\\rangle)`, which need not be
+neighbours in the candidate set: a candidate above the envelope is never
+selected at any multiplier, so with candidates :math:`\\{40,50,60\\}` the exact
+solution may mix 40 with 60.  Several intervals can also tie at the same
+multiplier (D132).
+
+Rather than implement that reasoning, the subproblem is handed to
+``scipy.optimize.linprog``.  It is exact by construction rather than by an
+argument about envelopes, and the certificate is one of the paper's stronger
+claims: a dull verified solver is worth more here than a clever fragile one.
+
+References
+----------
+.. [Frank1956] M. Frank and P. Wolfe, "An algorithm for quadratic
+   programming", *Naval Research Logistics Quarterly* 3, 1956.
+.. [Jaggi2013] M. Jaggi, "Revisiting Frank--Wolfe: projection-free sparse
+   convex optimization", *ICML*, 2013 -- the duality gap as a certificate.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+from numpy.typing import NDArray
+from scipy import sparse
+from scipy.optimize import linprog
+
+from tda.allocate.descent import DescentProblem
+
+__all__ = ["Certificate", "certify", "linear_minimisation"]
+
+Arr = NDArray[np.float64]
+
+
+@dataclass(frozen=True, slots=True)
+class Certificate:
+    """The certified distance between the descent schedule and the optimum.
+
+    Attributes
+    ----------
+    lower_bound:
+        :math:`L_{\\mathrm{FW}}`, the best (largest) bound the iteration
+        attained, clipped at zero since :math:`J\\ge0` always.
+    descent_objective:
+        :math:`J_{\\mathrm{desc}}`.
+    gap_objective:
+        :math:`g_J=(J_{\\mathrm{desc}}-L_{\\mathrm{FW}})/J_{\\mathrm{desc}}`.
+    gap_error:
+        :math:`g_E=1-\\sqrt{L_{\\mathrm{FW}}/J_{\\mathrm{desc}}}`.  The
+        quantity the paper's claims are in: the descent schedule's position
+        error is within this of the best any schedule of the class could
+        achieve.  A ten per cent error gap is a nineteen per cent objective
+        gap, which is why the two are never quoted for one another.
+    vacuous:
+        Whether the bound stayed at zero for the whole iteration.  Reported in
+        its own column rather than dropped, because an orbit with no
+        certificate is a different statement from an orbit with a wide one.
+    iterations:
+        Frank--Wolfe steps taken.
+    """
+
+    lower_bound: float
+    descent_objective: float
+    gap_objective: float
+    gap_error: float
+    vacuous: bool
+    iterations: int
+
+    def earns_the_name(self, threshold: float = 0.10) -> bool:
+        """Whether the gap clears the naming rule's threshold.
+
+        The rule is fixed before the runs and bound to :attr:`gap_error`, not
+        to the result: below the threshold the quantity may be called an
+        oracle, otherwise it is reported as a linearised trajectory-aware
+        allocation benchmark and every ratio against it read as conservative.
+        """
+        return (not self.vacuous) and self.gap_error < threshold
+
+
+def _feasible_set(problem: DescentProblem, budget: float):
+    """Build the relaxation's constraint matrices.
+
+    Returns the simplex equalities, the single knapsack row and the cost
+    vector, all in the flattened ``(q, N)`` variable order.  Sparse because
+    the equality block is :math:`K\\times KP` with exactly :math:`KP`
+    non-zeros -- dense it would be a hundred gigabytes at campaign scale.
+    """
+    n_intervals = problem.n_intervals
+    degrees = np.asarray(problem.candidate_degrees, dtype=float)
+    n_candidates = degrees.size
+    n_vars = n_intervals * n_candidates
+
+    rows = np.repeat(np.arange(n_intervals), n_candidates)
+    cols = np.arange(n_vars)
+    a_eq = sparse.csr_matrix(
+        (np.ones(n_vars), (rows, cols)), shape=(n_intervals, n_vars))
+    b_eq = np.ones(n_intervals)
+
+    work = (problem.time_weight[:, None] * degrees[None, :] ** 2).ravel()
+    a_ub = sparse.csr_matrix(work.reshape(1, -1))
+    return a_eq, b_eq, a_ub, np.array([budget]), work
+
+
+def linear_minimisation(problem: DescentProblem, gradient: Arr,
+                        budget: float) -> Arr:
+    """Solve the Frank--Wolfe subproblem exactly, as a linear programme.
+
+    Parameters
+    ----------
+    problem:
+        The relaxation's data.
+    gradient:
+        :math:`\\nabla J` at the current iterate, shape ``(M, 6)``.
+    budget:
+        The work ceiling.
+
+    Returns
+    -------
+    ndarray, shape (K, P)
+        The vertex :math:`\\theta` attaining the minimum.
+
+    Raises
+    ------
+    RuntimeError
+        If the solver does not certify optimality.  A run in which it does not
+        produces no bound: the whole value of the certificate is that the
+        subproblem was solved rather than approximated.
+    """
+    a_eq, b_eq, a_ub, b_ub, _ = _feasible_set(problem, budget)
+    # Objective coefficient of (q, N): sum over the interval's cells of
+    # <grad J_i, u_i(N)>.  One einsum over the whole contribution tensor.
+    per_cell = np.einsum("ipa,ia->ip", problem.contributions, gradient)
+    coefficients = np.zeros((problem.n_intervals, per_cell.shape[1]))
+    np.add.at(coefficients, problem.interval_of, per_cell)
+
+    result = linprog(coefficients.ravel(), A_ub=a_ub, b_ub=b_ub,
+                     A_eq=a_eq, b_eq=b_eq, bounds=(0.0, 1.0),
+                     method="highs")
+    if not result.success:
+        raise RuntimeError(
+            f"the linear minimisation did not solve: {result.message}. "
+            "No bound is reported for this orbit rather than a bound from an "
+            "unsolved subproblem.")
+    return result.x.reshape(coefficients.shape)
+
+
+def _contract(problem: DescentProblem, theta: Arr) -> Arr:
+    """:math:`\\mathbf u(\\theta)`, shape ``(M, 6)``."""
+    return np.einsum("ipa,ip->ia", problem.contributions,
+                     theta[problem.interval_of])
+
+
+def certify(problem: DescentProblem, descent_objective: float, budget: float,
+            iterations: int = 60) -> Certificate:
+    """Run Frank--Wolfe on the relaxation and return the certified gap.
+
+    Parameters
+    ----------
+    problem:
+        The relaxation's data.
+    descent_objective:
+        :math:`J` of the schedule being certified.
+    budget:
+        The work ceiling.
+    iterations:
+        Step budget.  The bound is valid at every iteration; more only makes
+        it tighter.
+
+    Returns
+    -------
+    Certificate
+
+    Notes
+    -----
+    The step is the exact line search, which for a quadratic is closed form:
+    :math:`\\gamma^{\\star}=-\\langle\\nabla J,\\mathbf d\\rangle/(2J(\\mathbf
+    d))` clipped to :math:`[0,1]`, with :math:`\\mathbf d=\\mathbf u(\\mathbf
+    s)-\\mathbf u(\\theta)`.  The usual :math:`2/(t+2)` schedule is a fallback
+    for objectives whose curvature is unknown; here it is known exactly and
+    guessing would only slow the bound down.
+
+    The bound can be negative early in the iteration.  Since :math:`J\\ge0`
+    always, it is clipped at zero, and a bound that never rises above zero is
+    reported as vacuous rather than as a gap of one hundred per cent.
+    """
+    kernel = problem.kernel
+    n_intervals = problem.n_intervals
+    n_candidates = len(problem.candidate_degrees)
+
+    # Start from the cheapest feasible vertex: all mass on the lowest degree.
+    theta = np.zeros((n_intervals, n_candidates))
+    theta[:, 0] = 1.0
+    u = _contract(problem, theta)
+
+    best_bound = -np.inf
+    taken = 0
+    for step_index in range(1, iterations + 1):
+        taken = step_index
+        gradient = kernel.gradient(u)
+        s = linear_minimisation(problem, gradient, budget)
+        u_s = _contract(problem, s)
+        direction = u_s - u
+
+        bound = kernel.objective(u) + float(np.sum(gradient * direction))
+        best_bound = max(best_bound, bound)
+
+        curvature = kernel.objective(direction)
+        if curvature <= 0.0:
+            break                      # the iterate is already a vertex
+        step = -float(np.sum(gradient * direction)) / (2.0 * curvature)
+        step = min(max(step, 0.0), 1.0)
+        if step == 0.0:
+            break
+        theta = theta + step * (s - theta)
+        u = u + step * direction
+
+    lower = max(best_bound, 0.0)
+    vacuous = lower <= 0.0
+    if descent_objective <= 0.0:
+        gap_objective = gap_error = 0.0
+    else:
+        gap_objective = (descent_objective - lower) / descent_objective
+        gap_error = 1.0 - float(np.sqrt(lower / descent_objective))
+    return Certificate(
+        lower_bound=lower,
+        descent_objective=descent_objective,
+        gap_objective=gap_objective,
+        gap_error=gap_error,
+        vacuous=vacuous,
+        iterations=taken,
+    )
