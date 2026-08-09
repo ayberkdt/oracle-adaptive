@@ -62,16 +62,17 @@ sonraki turda buradan da çıkacak.
 
 ### Yazılmamış kod
 
+Sicil **silinerek** kullanılır: yazılan modül tablodan çıkar.
+
 | Modül | İçerik | Bağımlı olduğu |
 |---|---|---|
 | `archive.py` | salt-okunur arşiv erişimi + WP0 kabul kontrolü | — |
-| `tables.py` | `Δa(t,N)` memmap tablosu, şema, provenance | archive, field, grids |
-| `kernel.py` | `A_i`, `K_i`, `c_i`, `J` — önek/sonek, Neumaier | stm, grids, tables |
-| `allocate/` | `separable`, `descent`, `frankwolfe` (LP-LMO, D132), `rounding` | kernel |
-| `policies.py` | `F-op`, `F-env`, `R-rad`, `R-int` | grids |
-| `probe.py`, `controller/` | bant probu, IFBDA, `C-plan`/`C-lite`/`C-fb` | spectrum, kernel |
 | `analysis/` | WP21'in T1–T7'si | allocate, kernel |
 | `io/` | manifest, digest zinciri, ön-tescil hash'i | — |
+
+Bu turda kapandı: `tables.py`, `kernel.py`, `allocate/`, `policies.py`,
+`probe.py`, `kepler.py`, **`controller/`** (`phase`, `plan`, `online`,
+`feedback`).
 
 ### Ölçülmemiş sayılar (şu an tahmin)
 
