@@ -287,9 +287,10 @@ L_FW = max{0, iterasyonlar boyunca en iyi FW sınırı}
 boştur, o yörünge ayrı sütunda sayılır.
 
 **Sertifika ikincil tanıdır (D178).** Gevşetme yakınsamaya kadar
-çözüldüğünde kalan tamsayı boşluğu gerçek bir yayda `K = 4/6/8/10/12` için
-`1.00 / 1.00 / 1.00 / 2.13 / 1.32` ölçüldü: aralık sayısıyla daralmıyor ve
-düzgün değil. Sertifikalı boşluğa konan bir eşik, çizelgenin değil o örnekte
+çözüldüğünde kalan tamsayı boşluğu bir **pilot** yayda (D181: tek yörünge,
+bir devir, `N_ref = 300`, üç aday; kampanya sonucu değil)
+`K = 4/6/8/10/12` için `1.00 / 1.00 / 1.00 / 2.13 / 1.32` ölçüldü: aralık
+sayısıyla daralmıyor ve düzgün değil. Sertifikalı boşluğa konan bir eşik, çizelgenin değil o örnekte
 gevşetmenin özelliğini ölçerdi. Sertifika yine hesaplanır ve raporlanır —
 `K = 810`'da elde kalan tek ifadedir — ama adı belirlemez.
 

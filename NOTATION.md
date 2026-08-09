@@ -599,6 +599,13 @@ değil, ve `K = 810`'a ekstrapole edilemez. Sertifikalı boşluğa konan bir eş
 o örnekte gevşetmenin ne kadar sıkı olduğunu ölçer; bu çizelgenin özelliği
 değildir ve hiçbir çözücü iyileştiremez.
 
+> **Bu beş sayı PİLOT ölçümdür, kampanya sonucu değil** (D181): tek yörünge
+> (50 × 500 km, `i = 85°`), bir devirlik yay, `N_ref = 300`, üç aday, orta
+> bütçe; ön-tescilsiz, tekrarsız. *Kuralı* haklı çıkarmaya yetiyorlar çünkü
+> tek bir örnekte bile boşluğun daralmaması eşiğin yanlış yerde olduğunu
+> gösterir. **Makaleye sayı olarak girmezler**; WP7b'nin kampanya paneli
+> onların yerine geçer.
+
 ```
 tüketim paneli: |𝒩|^K çizelgenin tamamı sayılır (K ≤ 12, |𝒩| = 3)
 r = J_desc / J*_tam                       (örnek başına)
