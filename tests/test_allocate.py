@@ -183,6 +183,37 @@ def test_away_steps_close_the_relaxation_and_classical_steps_do_not(
     assert away.lower_bound >= plain.lower_bound
 
 
+def test_starting_from_the_schedule_being_certified_is_worth_more_than_steps(
+        problem) -> None:
+    """Where the iteration starts dominates how long it runs.
+
+    From the cheapest vertex the iterate has the whole objective to descend
+    before the bound means anything, and the forward direction wins every
+    comparison on the way -- so the away step never fires and the run is
+    classical Frank--Wolfe with extra bookkeeping. Started at the schedule
+    under test it begins where the answer is.
+    """
+    budget = _mid_budget(problem)
+    optimum, schedule = _exhaustive(problem, budget)
+    cold = certify(problem, optimum, budget, iterations=20)
+    warm = certify(problem, optimum, budget, iterations=20,
+                   start_schedule=schedule)
+    assert warm.relaxed_gap < cold.relaxed_gap
+    assert warm.lower_bound > cold.lower_bound
+    assert warm.lower_bound <= optimum * (1.0 + 1e-9)
+
+
+def test_a_start_outside_the_ceiling_is_refused(problem) -> None:
+    """A bound is only a bound if the iterate began inside the feasible set."""
+    budget = _mid_budget(problem)
+    with pytest.raises(ValueError, match="against a ceiling"):
+        certify(problem, 1.0, budget, iterations=5,
+                start_schedule=np.full(INTERVALS, DEGREES[-1]))
+    with pytest.raises(ValueError, match="not a tabulated candidate"):
+        certify(problem, 1.0, budget, iterations=5,
+                start_schedule=np.full(INTERVALS, 17))
+
+
 def test_an_emptied_vertex_does_not_end_the_iteration(problem) -> None:
     """The away step must not be offered a vertex carrying no weight.
 

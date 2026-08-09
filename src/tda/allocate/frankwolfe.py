@@ -104,6 +104,7 @@ from tda.allocate.descent import DescentProblem
 __all__ = ["Certificate", "certify", "linear_minimisation"]
 
 Arr = NDArray[np.float64]
+IntArr = NDArray[np.int_]
 
 _WEIGHT_FLOOR = 1.0e-12
 """Below this an active vertex is treated as gone rather than as tiny."""
@@ -275,7 +276,8 @@ def _contract(problem: DescentProblem, theta: Arr) -> Arr:
 
 def certify(problem: DescentProblem, descent_objective: float, budget: float,
             iterations: int = 60, away_steps: bool = True,
-            tolerance: float = 1.0e-9) -> Certificate:
+            tolerance: float = 1.0e-9,
+            start_schedule: IntArr | None = None) -> Certificate:
     """Run Frank--Wolfe on the relaxation and return the certified gap.
 
     Parameters
@@ -299,6 +301,19 @@ def certify(problem: DescentProblem, descent_objective: float, budget: float,
         rather than merely shrinking, and once it does no further step can
         raise the bound; continuing would only spend the iteration budget of
         the next orbit.
+    start_schedule:
+        Integer schedule to start the relaxation from, normally the one being
+        certified.  It is a vertex of the relaxed set, so this is a change of
+        starting point and not of feasible set, and the bound stays valid.
+
+        Strongly recommended, and the reason is measured rather than
+        aesthetic.  Starting from the cheapest vertex puts the iterate nine
+        orders of magnitude above the optimum on a campaign-scale arc; the
+        forward direction then beats the away direction at *every* step, the
+        iteration degenerates to classical Frank--Wolfe, and four hundred
+        steps are spent travelling to a neighbourhood the caller could have
+        supplied for nothing.  The natural start is the schedule whose
+        distance from the optimum is the question.
 
     Returns
     -------
@@ -340,9 +355,32 @@ def certify(problem: DescentProblem, descent_objective: float, budget: float,
         """:math:`\\mathbf u` of a stored vertex, shape ``(M, 6)``."""
         return _contract(problem, np.asarray(atom.todense()).reshape(shape))
 
-    # Start from the cheapest feasible vertex: all mass on the lowest degree.
     start = np.zeros(shape)
-    start[:, 0] = 1.0
+    if start_schedule is None:
+        # Fallback: the cheapest feasible vertex, all mass on the lowest
+        # degree. Always feasible, and always far away.
+        start[:, 0] = 1.0
+    else:
+        column = {d: p for p, d in enumerate(problem.candidate_degrees)}
+        try:
+            picks = [column[int(n)] for n in np.asarray(start_schedule)]
+        except KeyError as exc:
+            raise ValueError(
+                f"start_schedule names degree {exc.args[0]}, which is not a "
+                "tabulated candidate") from None
+        if len(picks) != n_intervals:
+            raise ValueError(
+                f"start_schedule must have {n_intervals} entries, got "
+                f"{len(picks)}")
+        start[np.arange(n_intervals), picks] = 1.0
+        work = float((problem.time_weight[:, None]
+                      * np.asarray(problem.candidate_degrees, dtype=float) ** 2
+                      * start).sum())
+        if work > budget * (1.0 + 1.0e-9):
+            raise ValueError(
+                f"start_schedule spends {work:.6g} against a ceiling of "
+                f"{budget:.6g}; the relaxation must start inside its own "
+                "feasible set or the bound is not one")
     atoms = [as_atom(start)]
     weights = np.array([1.0])
     u = _contract(problem, start)
