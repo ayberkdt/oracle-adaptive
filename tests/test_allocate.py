@@ -19,6 +19,7 @@ stronger than physical data for an algebraic claim.
 from __future__ import annotations
 
 import itertools
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -30,6 +31,7 @@ from tda.allocate import (
     force_values,
     linear_minimisation,
     monotonicity_report,
+    objective_coefficients,
     round_and_polish,
     schedule_work,
     sensitivity_values,
@@ -141,6 +143,120 @@ def test_the_naming_rule_is_bound_to_the_gap_not_the_result(problem) -> None:
     optimum, _ = _exhaustive(problem, budget)
     result = certify(problem, optimum, budget, iterations=60)
     assert result.earns_the_name(1.0) is not result.earns_the_name(0.0)
+
+
+def test_away_steps_do_not_change_what_the_bound_is(problem) -> None:
+    """Validity is the away step's one non-negotiable.
+
+    It changes how fast the iterate reaches the relaxed optimum and nothing
+    about what the linearisation at that iterate means, so the bound must
+    still sit under the true optimum.
+    """
+    budget = _mid_budget(problem)
+    optimum, _ = _exhaustive(problem, budget)
+    result = certify(problem, optimum, budget, iterations=60, away_steps=True)
+    assert result.lower_bound <= optimum * (1.0 + 1e-9)
+    assert result.away_steps > 0
+    assert result.active_atoms >= 1
+
+
+def test_away_steps_close_the_relaxation_and_classical_steps_do_not(
+        problem) -> None:
+    """What the away step actually buys: termination.
+
+    On this instance the away-step iteration drives the relaxation's own
+    duality gap to zero, so its bound *is* the relaxed optimum and no further
+    computation can improve it. Classical Frank--Wolfe is still short of that
+    after more than twice the steps.
+    """
+    budget = _mid_budget(problem)
+    optimum, _ = _exhaustive(problem, budget)
+    away = certify(problem, optimum, budget, iterations=800, away_steps=True)
+    plain = certify(problem, optimum, budget, iterations=2000,
+                    away_steps=False)
+
+    assert away.relaxed_gap == pytest.approx(0.0, abs=1e-9)
+    assert away.lower_bound == pytest.approx(away.relaxed_objective, rel=1e-9)
+    assert plain.relaxed_gap > 1e-6
+    assert away.lower_bound >= plain.lower_bound
+
+
+def test_the_bound_is_a_maximum_over_a_sequence_that_is_not_monotone(
+        problem) -> None:
+    """Why the away step is not uniformly better at a fixed step count.
+
+    The reported bound is the best linearisation seen along the path, and the
+    two variants take different paths, so at low step counts the classical one
+    can happen to pass through a better point. It stops mattering once the
+    relaxation is solved, but a run that compared the two at sixty steps and
+    concluded the away step had hurt would be reading path noise.
+    """
+    budget = _mid_budget(problem)
+    optimum, _ = _exhaustive(problem, budget)
+    early_away = certify(problem, optimum, budget, iterations=60)
+    early_plain = certify(problem, optimum, budget, iterations=60,
+                          away_steps=False)
+    assert early_away.relaxed_gap < early_plain.relaxed_gap
+    assert early_away.lower_bound < early_plain.lower_bound
+    for result in (early_away, early_plain):
+        assert result.lower_bound <= optimum * (1.0 + 1e-9)
+
+
+def test_a_solved_relaxation_still_leaves_an_integrality_gap(problem) -> None:
+    """The certificate's ceiling is the relaxation, not the solver.
+
+    Once the away-step iteration has converged, the bound is exactly the
+    relaxed optimum, and on this instance that sits well below the true
+    integer optimum. No amount of further computation closes the remainder:
+    it is the price of relaxing an integer schedule to a convex mixture, and
+    it is what the naming rule of D1/D29 is really testing.
+    """
+    budget = _mid_budget(problem)
+    optimum, _ = _exhaustive(problem, budget)
+    solved = certify(problem, optimum, budget, iterations=800)
+    assert solved.relaxed_gap == pytest.approx(0.0, abs=1e-9)
+    assert solved.lower_bound < optimum
+    # The best gap this relaxation can ever certify on this instance.
+    assert solved.gap_error == pytest.approx(
+        1.0 - np.sqrt(solved.lower_bound / optimum), rel=1e-12)
+
+
+def test_a_loose_relaxation_is_named_rather_than_read_as_slow(
+        problem) -> None:
+    """The predicate that decides whether more compute could ever help.
+
+    Tested on constructed records rather than on a run: the point is the
+    judgement it encodes, and a run that happened to exhibit both cases would
+    be a coincidence rather than a test.
+    """
+    budget = _mid_budget(problem)
+    optimum, _ = _exhaustive(problem, budget)
+    solved = certify(problem, optimum, budget, iterations=60)
+    assert not solved.vacuous
+    assert not solved.structurally_vacuous
+
+    # Bound at zero, relaxation essentially converged: no run is long enough.
+    loose = replace(solved, lower_bound=0.0, vacuous=True,
+                    relaxed_gap=1e-6 * optimum)
+    assert loose.structurally_vacuous
+    # Bound at zero, relaxation nowhere near converged: run it longer.
+    slow = replace(solved, lower_bound=0.0, vacuous=True,
+                   relaxed_gap=10.0 * optimum)
+    assert not slow.structurally_vacuous
+
+
+def test_the_linearised_costs_match_a_direct_sum(problem) -> None:
+    """The away step scores stored vertices with these, so they must be exact."""
+    schedule = np.full(INTERVALS, DEGREES[1])
+    gradient = problem.kernel.gradient(problem.gather(schedule))
+    coefficients = objective_coefficients(problem, gradient)
+
+    expected = np.zeros_like(coefficients)
+    for i in range(problem.contributions.shape[0]):
+        q = int(problem.interval_of[i])
+        for p in range(len(DEGREES)):
+            expected[q, p] += float(problem.contributions[i, p] @ gradient[i])
+    assert coefficients == pytest.approx(expected, rel=1e-12, abs=1e-15)
 
 
 def test_the_subproblem_solution_is_a_feasible_vertex(problem) -> None:

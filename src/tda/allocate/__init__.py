@@ -33,7 +33,12 @@ from tda.allocate.descent import (
     monotonicity_report,
     solve_descent,
 )
-from tda.allocate.frankwolfe import Certificate, certify, linear_minimisation
+from tda.allocate.frankwolfe import (
+    Certificate,
+    certify,
+    linear_minimisation,
+    objective_coefficients,
+)
 from tda.allocate.rounding import (
     argmax_rounding,
     round_and_polish,
@@ -55,6 +60,7 @@ __all__ = [
     "force_values",
     "linear_minimisation",
     "monotonicity_report",
+    "objective_coefficients",
     "round_and_polish",
     "schedule_work",
     "sensitivity_values",
