@@ -144,10 +144,11 @@ class Certificate:
         :math:`g_J=(J_{\\mathrm{desc}}-L_{\\mathrm{FW}})/J_{\\mathrm{desc}}`.
     gap_error:
         :math:`g_E=1-\\sqrt{L_{\\mathrm{FW}}/J_{\\mathrm{desc}}}`.  The
-        quantity the paper's claims are in: the descent schedule's position
-        error is within this of the best any schedule of the class could
-        achieve.  A ten per cent error gap is a nineteen per cent objective
-        gap, which is why the two are never quoted for one another.
+        excess measured against the *attained* error.  Retained because the
+        campaign registered it; see :attr:`relative_excess` for the form a
+        reader actually takes a gap statement to mean.  A ten per cent gap
+        here is a nineteen per cent objective gap, which is why the two are
+        never quoted for one another.
     vacuous:
         Whether the bound stayed at zero for the whole iteration.  Reported in
         its own column rather than dropped, because an orbit with no
@@ -180,6 +181,34 @@ class Certificate:
     away_steps: int = 0
     drop_steps: int = 0
     active_atoms: int = 0
+
+    @property
+    def relative_excess(self) -> float:
+        """How far above the optimum the schedule can be, as a fraction of it.
+
+        :math:`g_E^{\\star}=\\sqrt{J_{\\mathrm{desc}}/L_{\\mathrm{FW}}}-1`.
+        Since :math:`E^{\\star}\\ge\\sqrt{L_{\\mathrm{FW}}}`, this bounds
+        :math:`(E_{\\mathrm{desc}}-E^{\\star})/E^{\\star}` --- "the schedule is
+        at most this far above the best available", which is what a gap
+        statement is read as.  :attr:`gap_error` measures the same bound
+        against the *attained* error instead and comes out about a tenth
+        smaller near the values of interest: :math:`0.10` there is
+        :math:`0.111` here.  A small difference, in a claim whose entire
+        content is a bound.
+
+        Returns ``inf`` when the bound is vacuous: the schedule could then be
+        arbitrarily far above the optimum for all the certificate knows.
+
+        Examples
+        --------
+        >>> Certificate(lower_bound=0.81, descent_objective=1.0,
+        ...             gap_objective=0.19, gap_error=0.1, vacuous=False,
+        ...             iterations=10).relative_excess
+        0.11111111111111116
+        """
+        if self.vacuous or self.lower_bound <= 0.0:
+            return float("inf")
+        return float(np.sqrt(self.descent_objective / self.lower_bound) - 1.0)
 
     @property
     def structurally_vacuous(self) -> bool:

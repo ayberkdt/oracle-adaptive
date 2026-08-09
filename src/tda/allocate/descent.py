@@ -217,8 +217,8 @@ def sweep_once(problem: DescentProblem, columns: IntArr,
 
 
 def solve_descent(problem: DescentProblem, budget: float,
-                  starts: Sequence[IntArr], max_sweeps: int = 12
-                  ) -> ScheduleSolution:
+                  starts: Sequence[IntArr], max_sweeps: int = 12,
+                  polish: bool = True) -> ScheduleSolution:
     """Multi-start budgeted coordinate descent.
 
     Parameters
@@ -233,6 +233,13 @@ def solve_descent(problem: DescentProblem, budget: float,
         and a fixed set of random seeds --- and reports the spread.
     max_sweeps:
         Cap on inner sweeps per start.
+    polish:
+        Whether to run the hard-budget polish of
+        :func:`tda.allocate.polish.polish_to_budget` on the continuation's
+        answer.  On by default: the multiplier sweep reaches only the
+        supported points of a discrete trade-off curve, and the polish is
+        what searches under the constraint as written (D182).  ``False`` is
+        the control that measures what it was worth.
 
     Returns
     -------
@@ -254,7 +261,9 @@ def solve_descent(problem: DescentProblem, budget: float,
     meant to detect.
 
     Selection among starts is on :math:`J+\\lambda W`, never on :math:`J`
-    alone (D131).
+    alone (D131) --- that is the Lagrangian subproblem.  Selection *across*
+    multipliers, and the polish that follows, work on :math:`J` under the
+    ceiling, which is the actual problem.
     """
     if not starts:
         raise ValueError("at least one starting schedule is required")
@@ -294,15 +303,33 @@ def solve_descent(problem: DescentProblem, budget: float,
             problem.gather(degrees[best_columns]))
 
     solution = solve_to_budget(solve_at, problem.time_weight, budget)
+    if not polish:
+        return ScheduleSolution(
+            degrees=solution.degrees, objective=solution.objective,
+            work=solution.work, budget=solution.budget,
+            multiplier=solution.multiplier, feasible=solution.feasible,
+            spread=tuple(last_spread), diagnostics=solution.diagnostics,
+        )
+
+    from tda.allocate.polish import polish_to_budget
+
+    polished, report = polish_to_budget(problem, solution.degrees, budget)
+    diagnostics = dict(solution.diagnostics)
+    diagnostics.update({
+        "polish_single_moves": float(report.single_moves),
+        "polish_exchange_moves": float(report.exchange_moves),
+        "polish_exchanges_rejected": float(report.exchanges_rejected),
+        "polish_passes": float(report.passes),
+    })
     return ScheduleSolution(
-        degrees=solution.degrees,
-        objective=solution.objective,
-        work=solution.work,
+        degrees=polished,
+        objective=report.objective_after,
+        work=report.work_after,
         budget=solution.budget,
         multiplier=solution.multiplier,
-        feasible=solution.feasible,
+        feasible=True,
         spread=tuple(last_spread),
-        diagnostics=solution.diagnostics,
+        diagnostics=diagnostics,
     )
 
 

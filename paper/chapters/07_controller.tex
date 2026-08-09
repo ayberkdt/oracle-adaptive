@@ -454,7 +454,10 @@ The controller is accordingly split:
 \end{tabular}
 \end{center}
 
-and neither half reads the reference field or the reference arc.
+and neither half evaluates the full reference field or the reference truncation
+defect along the reference arc. The probe does read the model's coefficients ---
+it evaluates the leading omitted bands, which is the point --- and that is the
+information boundary of RQ3 as stated, not an exception to it.
 
 \paragraph{The plan is indexed by phase, not by time.} This is forced by the
 same coherence argument, applied to the smooth quantities rather than to the

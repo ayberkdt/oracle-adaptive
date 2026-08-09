@@ -114,13 +114,16 @@ conditional branches rather than a wish list.
     Table~\ref{tab:horizon} has its knee well inside the arc or the coherence
     horizon of Section~\ref{sec:controller-split} is short.
   \item \emph{A reduced cancellation state.} The coupling enters only through
-    $\mathbf A_i$, whose rank is at most three by construction and whose
-    eigenvalue spread is reported in Section~\ref{sec:ablations}. If the trace
-    concentrates in one or two directions, the accumulated state the controller
-    must carry is that many scalars rather than a six-vector, and it can be
-    updated in flight instead of being planned offline --- a cheaper controller
-    than the one flown here, and the same reduction that makes a trellis
-    formulation tractable.
+    $\mathbf A_i$. Each $\mathbf M_j$ in its sum has rank at most three, but
+    the suffix sum can have rank up to six --- the summands' ranges rotate
+    along the arc --- so low rank is a question and not a construction. What
+    Section~\ref{sec:ablations} measures is whether the spectrum is
+    nevertheless concentrated: if the trace sits in one or two directions
+    \emph{and} those directions are stable over the coherence horizon, the
+    accumulated state the controller must carry is that many scalars rather
+    than a six-vector, and it can be updated in flight instead of being
+    planned offline --- a cheaper controller than the one flown here, and the
+    same reduction that makes a trellis formulation tractable.
   \item \emph{A switching penalty}, which turns the coordinate descent into a
     trellis problem and is only worth the state if that reduction holds.
   \item \emph{A vector-tail surrogate} in place of the probe, along the

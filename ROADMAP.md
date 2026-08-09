@@ -95,7 +95,7 @@ Bu turda kapandı: `tables.py`, `kernel.py`, `allocate/`, `policies.py`,
   `πr/N` = 48/19/10 km).
 - **Q15** yazılmadı: hızlı alan değerlendirme literatürüne karşı konum;
   §7.1'in çözünürlük argümanı alanın kendisi için de kurulmalı.
-- 314 `\ph` yer tutucusu, 11 `\dnote`.
+- 318 `\ph` yer tutucusu, 10 `\dnote`.
 
 ### Depo
 

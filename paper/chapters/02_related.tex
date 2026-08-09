@@ -6,10 +6,17 @@
 \ph{one paragraph} Attenuation-only thresholds, degree-variance criteria in the
 Meissl / Lowes--Mauersberger form \citep{RummelVanGelderen1995,Lowes1966}, and
 Kaula-type spectral rules \citep{kaula1966theory}. Radius-driven selection
-during propagation \citep{atallah2022radial}. What all of these share is that
-the selection functional is the local force error, evaluated pointwise.
+during propagation \citep{atallah2022radial}. These methods commonly select on
+a local criterion --- force error, radius, spectral tail, or a state or
+uncertainty proxy --- evaluated pointwise. The distinction drawn here is not
+that such criteria are unknown to the literature but that none of them
+allocates the \emph{degree history} jointly over a finite horizon under one
+budget while retaining the signed cross-epoch coupling of
+Eq.~\eqref{eq:objective}; that is the gap Section~\ref{sec:problem}
+formalizes.
 
 \subsection{Budgeted allocation}
+\label{sec:related-allocation}
 
 The separable case is classical. Allocating a scalar budget over independent
 items through a single multiplier is Everett's generalized Lagrange multiplier
@@ -55,7 +62,9 @@ as a state, the allocation is a Mayer--Bolza problem with a mixed integer
 control; Pontryagin's principle \citep{pontryagin1962mathematical} then
 reduces the choice at each instant to minimizing a Hamiltonian against a
 costate, and the cross term $\mathbf c_i$ of Eq.~\eqref{eq:cross-term} is
-exactly that costate transported to $t_0$. The forward--backward iteration of
+proportional to that costate transported to $t_0$ --- one half of
+$\nabla_{\mathbf u_i}J=2\mathbf c_i$ under the normalization used here, the
+factor depending on the adjoint convention. The forward--backward iteration of
 Section~\ref{sec:controller-ifbda} is the corresponding two-point boundary
 value problem solved by successive sweeps
 \citep[Ch.~2]{bryson1975applied}, and the same reading places the method in

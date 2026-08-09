@@ -84,7 +84,7 @@ M1'e alındı (D8, G3).
 | 4 | [OUTCOMES.md](OUTCOMES.md) | Sonuç bantları, sahte-iyi artefakt tablosu, risk sicili, erken uyarı göstergeleri |
 | 5 | [NOTATION.md](NOTATION.md) | **Dondurulmuş adlar ve tanımlar.** Politika kodları, maliyet düzeyleri, ızgaralar, terminoloji |
 | 6 | [PREREG.md](PREREG.md) | Üç ön-tescilin tam metin taslağı (OA-01/02/03) + WP21 dallanma eşikleri |
-| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D181** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
+| 7 | [DECISIONS.md](DECISIONS.md) | Karar günlüğü **D1–D183** (**D66 = kapsam donduruldu**) ve açık sorular **Q1–Q15** (Q6/Q11/Q12 kapalı) |
 | 8 | [paper/](paper) | LaTeX manuskript taslağı — `main.tex`, `chapters/`, `references.bib` |
 | 9 | [src/tda/](src/tda) | Kampanya kodu (aşağıdaki katman tablosu); [tests/](tests) altında birim testleri |
 
@@ -141,8 +141,8 @@ Kalan düz modüller tek bir taban katmanı ve düz durmaları doğru.
 | `\dnote{...}` | metnin **yönü** hangi sonuca bağlı — editoryal to-do değil | `grep -rn '\\dnote{' chapters/` |
 | `\wpref{...}` | o pasajın sayılarını üreten iş paketi | — |
 
-`\draftfalse` ile temiz okuma sürümü derlenir. Şu an: **29 sayfa**,
-`\ph` sayısı 314, `\dnote` sayısı 11; tanımsız referans/atıf yok.
+`\draftfalse` ile temiz okuma sürümü derlenir. Şu an: **30 sayfa**,
+`\ph` sayısı 318, `\dnote` sayısı 10; tanımsız referans/atıf yok.
 Bu üç sayı `check_numbers.py` tarafından **kaynaktan ve derleme çıktısından
 yeniden hesaplanıp** buradaki beyanla karşılaştırılıyor; elle güncellenmeleri
 gerekiyor ama bayat kalmaları mümkün değil.

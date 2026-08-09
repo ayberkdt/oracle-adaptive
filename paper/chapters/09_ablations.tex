@@ -113,15 +113,51 @@ multi-start descent it becomes the reported schedule and the descent becomes
 the control.
 
 \paragraph{How many directions does the coupling actually use?} Each
-$\mathbf M_j$ has rank three by construction, but $\mathbf A_i$ is a sum of
-them and its eigenvalue spread has not been reported anywhere. Table
-\ph{tab} gives the number of eigendirections carrying $95\%$ of
-$\operatorname{tr}\mathbf A_i$ along the arc, and the objective error and
-schedule change when $\mathbf A_i$ is truncated to them. \ph{state the number.}
-The consequence is architectural rather than cosmetic: if the trace
-concentrates in one or two directions, the accumulated state that drives the
-coupling is that many scalars, and a controller can carry and update them in
-flight instead of reading a six-vector target from an offline plan.
+$\mathbf M_j$ has rank at most three, but $\mathbf A_i$ is a \emph{sum} of
+them, and because the summands' ranges rotate along the arc the sum can have
+rank up to six. Low rank is therefore something to measure, not something the
+construction supplies.
+
+\emph{Measured on a nondimensionalized form.} The state is
+$\mathbf x=[\mathbf r^{\top}\ \mathbf v^{\top}]^{\top}$ with metres in the
+first three components and metres per second in the last three, so the blocks
+of $\mathbf A_i$ carry different physical dimensions and its raw eigenvalues,
+trace and eigenvectors are not invariant under a change of units: reporting
+velocity in km/s instead of m/s can change the effective rank. With
+$\mathbf D=\operatorname{diag}(L,L,L,L/T_s,L/T_s,L/T_s)$ and
+$\mathbf x=\mathbf D\tilde{\mathbf x}$, the quadratic form transforms
+congruently,
+
+\begin{equation}
+  \tilde{\mathbf A}_i \;=\; \mathbf D^{\top}\mathbf A_i\,\mathbf D ,
+  \label{eq:nondim-form}
+\end{equation}
+
+and every quantity below is computed on $\tilde{\mathbf A}_i$. This is a
+congruence and not a similarity transform: it is the form that is being
+rescaled, not an operator, and using $\mathbf D^{-1}\mathbf A_i\mathbf D$
+would change the spectrum for no physical reason. The scales $L$ and $T_s$ are
+registered in advance --- the lunar reference radius and the characteristic
+orbital time of Table~\ref{tab:populations} --- so that the verdict cannot be
+moved by choosing them afterwards.
+
+\emph{T3a, concentration.} Table \ph{tab} gives $p$, the number of
+eigendirections of $\tilde{\mathbf A}_i$ carrying $95\%$ of its trace, and the
+objective error and schedule change when $\tilde{\mathbf A}_i$ is truncated to
+them. \ph{state the number.}
+
+\emph{T3b, coherence.} Concentration alone does not license a reduced
+controller. If the dominant subspace $\mathcal U_p(t)$ turns quickly, a
+$p$-scalar state is the wrong $p$ scalars one interval later. We therefore
+report the principal angles between $\mathcal U_p(t_i)$ and
+$\mathcal U_p(t_{i+1})$, and their accumulation over the coherence horizon of
+Section~\ref{sec:controller-split}. \ph{state the median angle.}
+
+The branch is taken on both together: $p\le2$ \emph{and} a median principal
+angle below \ph{value} sends the architecture to a $p$-scalar state updated in
+flight; either alone leaves the full six-vector target read from an offline
+plan. The consequence is architectural rather than cosmetic, which is why the
+rule is fixed here rather than after the figure exists.
 
 \paragraph{How far ahead does the coupling reach?}
 Table~\ref{tab:horizon} replaces $\mathbf A_i$ by its truncation to a horizon

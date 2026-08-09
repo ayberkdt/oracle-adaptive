@@ -252,8 +252,8 @@ between $\mathbf K_i$ and the diagonal of the kernel.
 
 The quadrature weights enter only inside the suffix sequence, so the structure
 that makes the problem tractable is untouched by a non-uniform grid. They are
-required to be non-negative, which rectangle and trapezoid rules satisfy and
-higher-order Newton--Cotes rules do not: with $\omega_j\ge0$ and each
+required to be non-negative, which the trapezoid rule used here satisfies:
+with $\omega_j\ge0$ and each
 $\mathbf M_j$ positive semidefinite, $\mathbf Q$ is positive semidefinite, and
 that is what the convex relaxation of Section~\ref{sec:algorithm-certificate}
 rests on.
@@ -334,6 +334,16 @@ A signed integral sampled coarser than that is aliased, even where the
 corresponding magnitude statistic is converged --- and the previous paper
 verified convergence only of the magnitude, which moved by \ph{pct} between a
 120~s and a 10~s cadence.
+
+The speed in Eq.~\eqref{eq:decorrelation} is the inertial $v$, and that is a
+deliberately conservative proxy. What carries the vehicle across the field's
+texture is the body-fixed transverse rate $r\lVert\dot{\hat{\mathbf r}}_{\mathrm{BF}}\rVert$,
+which equals $v$ only where the motion is transverse; on an eccentric arc the
+radial component inflates $v$ without moving the ground track, so
+Eq.~\eqref{eq:decorrelation} runs short and the grid and probe are costed
+high rather than low. The convergence sweep of Section~\ref{sec:campaign}
+settles the question empirically --- it varies the sampling and asks where the
+schedule stops moving --- so nothing rests on the proxy being tight.
 
 Equation~\eqref{eq:decorrelation} is not one number. Both $r$ and $v$ swing by
 factors of several on the eccentric orbits studied here, and $N$ with them, so

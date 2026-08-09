@@ -163,16 +163,18 @@ the benchmark and the planner is weakest and only signs are read.
 
 \begin{table}[!htbp]
   \centering\small
-  \caption{What ``equal budget'' equals, down the four costs of
-  Section~\ref{sec:setup-budgets}, as controller over comparator. Only the
-  primary row is matched by construction. \ph{fill from WP16}}
+  \caption{What the common ceiling equals, down the four costs of
+  Section~\ref{sec:setup-budgets}, as controller over comparator. The charged
+  total is what the ceiling bounds; the rows beneath it decompose that total
+  and are not shares of one another. \ph{fill from WP16}}
   \label{tab:cost-ladder}
   \begin{tabular}{@{}lccl@{}}
     \toprule
     Cost & A & B & \\
     \midrule
-    Realized total quadratic work $B_2$ & \ph{value} & \ph{value} & matched by construction \\
-    \quad of which controller overhead $B_+$ & \ph{pct} & \ph{pct} & pilot arc, probe, planning \\
+    Charged work $B_2+B_+$ & \ph{value} & \ph{value} & bounded by the ceiling $B_{\mathrm{tot}}$ \\
+    \quad gravity work $B_2$ & \ph{value} & \ph{value} & $\sum_{\text{calls}}N^2$ \\
+    \quad controller overhead $B_+$ & \ph{value} & $0$ & pilot arc, probe, planning \\
     Nominal per-call work $B_1$ & \ph{value} & \ph{value} & reported for comparability only \\
     Right-hand-side calls made & \ph{value} & \ph{value} & \\
     End-to-end wall time & \multicolumn{2}{c}{\ph{value}} & on \ph{n} timed orbits \\

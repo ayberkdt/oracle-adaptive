@@ -29,8 +29,8 @@ one that paper actually makes at the confidence level it makes it.}
 
 That leaves an obvious question unanswered, and this paper answers it. If the
 force-level criterion is the wrong objective, what does the right one give, how
-much is it worth, and can any of it be obtained without the information an
-oracle has? Three questions organize the paper.
+much is it worth, and can any of it be obtained without the reference-field
+access the benchmark is granted? Three questions organize the paper.
 
 \begin{description}
   \item[RQ1] Under trajectory-aware information, how much accuracy is
@@ -89,8 +89,11 @@ probes forward one interval at a time respects that split, reads neither the
 reference arc nor the field along it, and is the object the
 campaign of Section~\ref{sec:campaign} evaluates.
 
-Throughout, the budget that is held equal is realized total quadratic work,
-including the controller's own overhead, and not a nominal per-call count. The
+Throughout, the budget is a common \emph{ceiling} on realized total quadratic
+work, with the controller's own overhead charged against it, and not a nominal
+per-call count. A ceiling rather than an equality because the objective is not
+monotone in degree (Section~\ref{sec:algorithm}), so realized work is reported
+beside every error rather than assumed identical. The
 previous paper measured that the two differ by a median \ph{pct} and by a
 factor of \ph{value} in the compute-starved regime, which is precisely the
 regime where a budget matters, so the weaker definition is not used here to

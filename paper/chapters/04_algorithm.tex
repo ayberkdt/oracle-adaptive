@@ -60,24 +60,93 @@ and a sensitivity-weighted allocation.
   \EndFor
   \State $N^\star(\lambda) \gets \argmin_s F_\lambda^{(s)}$
     \Comment{by the \emph{penalized} objective, not by $J$}
-  \State $\lambda \gets$ bisect on $W(N^\star)-B$ within
-    $[0,\lambda_{\mathrm{hi}}]$
-\Until{$W(N^\star)\le B$ and $\lambda\,(B-W(N^\star))<\ph{value}$}
-\State \Return $N^\star$, $J(N^\star)$, and the spread of $J$ across
+  \State \textbf{if} $W(N^\star)\le B$ \textbf{then} keep $N^\star$ among the
+    feasible candidates \Comment{best $J$ wins, whichever $\lambda$ found it}
+  \State $\lambda \gets$ bisect within $[0,\lambda_{\mathrm{hi}}]$
+    \Comment{search accelerator only}
+\Until{bracket exhausted}
+\State $N^{\dagger} \gets$ the feasible candidate of smallest $J$
+\State $N^{\dagger} \gets \textsc{Polish}(N^{\dagger},B)$
+  \Comment{Alg.~\ref{alg:polish}: search under the constraint itself}
+\State \Return $N^{\dagger}$, $J(N^{\dagger})$, and the spread of $J$ across
   $\mathcal{S}$
 \end{algorithmic}
 \end{algorithm}
 
 \paragraph{The budget is a ceiling, and the optimum need not reach it.}
-Problem~\eqref{eq:allocation} constrains $\sum_qW_qN_q^2\le B$, and the
-Karush--Kuhn--Tucker conditions for it are $\lambda\ge0$, $B-W\ge0$ and
-$\lambda\,(B-W)=0$: a solution that leaves work unspent is admissible whenever
-$\lambda^\star=0$. That is not a corner case to be tidied away. The objective
-is \emph{not} monotone in degree --- the whole content of the signed
-formulation is that contributions cancel, so raising a degree can shrink one
-term of a cancelling pair and \emph{increase} $J$. An allocator that spends
-its last unit of work can therefore be worse than one that stops short, and
-Algorithm~\ref{alg:descent} tests $\lambda=0$ before it bisects.
+Problem~\eqref{eq:allocation} constrains $\sum_qW_qN_q^2\le B$, and a schedule
+that leaves work unspent is admissible. That is not a corner case to be tidied
+away. The objective is \emph{not} monotone in degree --- the whole content of
+the signed formulation is that contributions cancel, so raising a degree can
+shrink one term of a cancelling pair and \emph{increase} $J$. An allocator that
+spends its last unit of work can therefore be worse than one that stops short,
+and Algorithm~\ref{alg:descent} tests $\lambda=0$ before it brackets anything.
+
+\paragraph{The multiplier is a search device, not an optimality condition.}
+The degrees are integers, so Eq.~\eqref{eq:allocation} is an integer program
+and the Karush--Kuhn--Tucker conditions are not necessary for its optimum.
+Complementary slackness fails outright. Two candidates with $(W,J)$ of $(5,1)$
+and $(10,0)$ under $B=6$ have the first as their constrained optimum: it
+spends five of six, and there is no $\lambda\ge0$ for which
+$\lambda\,(B-W^{\star})=0$ while $N^{\star}$ minimises $J+\lambda W$. A sweep
+stopped on $\lambda\,(B-W)<\epsilon$ would reject the right answer.
+
+The limitation is more general than that example. Minimising $J+\lambda W$ is
+a weighted-sum scalarization, and over a discrete set such a scalarization
+reaches only the \emph{supported} points of the trade-off curve --- the same
+duality gap Section~\ref{sec:related-allocation} notes for separable discrete
+allocation. A constrained optimum lying in a non-convex notch is unreachable
+from every multiplier, however finely the sweep is refined.
+
+Algorithm~\ref{alg:descent} is therefore stated as what it is: a Lagrangian
+continuation that generates good feasible schedules cheaply. It keeps the
+smallest-$J$ schedule among \emph{all} feasible ones the sweep produced rather
+than whichever the last bracket happened to land on --- returning the last
+lets a larger start set come back \emph{worse} than a smaller one, which we
+observed before fixing it. The result is then improved under the constraint as
+written, with no penalty term:
+
+\begin{equation}
+  N_q \;\gets\; \argmin_{N\;:\;W_{-q}+W_qN^2\le B} J ,
+  \label{eq:feasible-polish}
+\end{equation}
+
+together with a paired exchange $(N_p,N_q)\to(N_p',N_q')$ subject to $W\le B$,
+which supplies the direction Eq.~\eqref{eq:feasible-polish} lacks: a raise
+blocked by the ceiling becomes affordable only if something else comes down.
+Pairs are proposed by marginal rate and accepted on an exact re-evaluation,
+since two intervals' cross terms see each other and the sum of two
+independently computed changes is not the change of applying both.
+
+\begin{algorithm}[!htbp]
+\caption{\textsc{Polish}: search under the ceiling, with no penalty term}
+\label{alg:polish}
+\begin{algorithmic}[1]
+\Require feasible $N$; budget $B$; tabulated $\mathbf u_i(N)$
+\Repeat
+  \State $\Delta J_{qN},\ \Delta W_{qN} \gets$ exact change from moving
+    interval $q$ to $N$, all $q$ and $N$ \Comment{one pass, same algebra as
+    the sweep at $\lambda=0$}
+  \If{some $\Delta J_{qN}<0$ with $\Delta W_{qN}\le B-W$}
+    \State apply the most negative such move
+      \Comment{Eq.~\eqref{eq:feasible-polish}}
+  \Else
+    \State rank raises by $\Delta J/\Delta W$ and lowers by
+      $\Delta J/(-\Delta W)$; for the leading few pairs $(p,q)$, $p\ne q$:
+    \State \quad apply both, \textbf{re-evaluate $J$ exactly}, keep the first
+      that fits and improves \Comment{the ranking is a proposal; the
+      acceptance is not}
+  \EndIf
+\Until{nothing moves}
+\State \Return $N$
+\end{algorithmic}
+\end{algorithm}
+
+No step of this claims optimality. What measures the distance to it is the
+enumeration of Section~\ref{sec:algorithm-exhaustive}, and on unstructured
+test instances the pipeline is demonstrably \emph{not} optimal --- worst case
+\ph{value} above the enumerated optimum --- which is reported rather than
+bounded.
 
 Two consequences run through the rest of the paper. Comparisons are matched on
 a common realized-work \emph{ceiling} rather than on equal spend, and each
@@ -211,20 +280,34 @@ the bound directly:
 Write $L_{\mathrm{FW}}$ for the best (largest) value the left-hand side attains
 over the iteration budget and $J_{\mathrm{desc}}$ for the descent objective.
 Because the objective is a squared error, a gap in $J$ and a gap in $E$ are not
-the same number, so both are defined and the threshold is fixed on the second:
+the same number, so both are reported:
 
 \begin{equation}
   g_J \;=\; \frac{J_{\mathrm{desc}}-L_{\mathrm{FW}}}{J_{\mathrm{desc}}},
   \qquad
-  g_E \;=\; 1-\sqrt{\frac{L_{\mathrm{FW}}}{J_{\mathrm{desc}}}}
-  \;=\; 1-\sqrt{1-g_J} .
+  g_E^{\star} \;=\; \sqrt{\frac{J_{\mathrm{desc}}}{L_{\mathrm{FW}}}}-1 .
   \label{eq:certified-gap}
 \end{equation}
 
-$g_E$ states that the descent schedule's position error is within $g_E$ of the
-best error any schedule of this class could achieve. A $10\%$ error gap
-corresponds to $g_J\approx19\%$. It is reported for every orbit and it carries
-no threshold; what the naming rule is bound to is the exhaustive panel of
+The excess is written as a fraction of the \emph{optimum} rather than of the
+attained error, and the distinction is not pedantry. From
+$E^{\star}\ge\sqrt{L_{\mathrm{FW}}}$ the bound is
+
+\begin{equation}
+  \frac{E_{\mathrm{desc}}-E^{\star}}{E^{\star}} \;\le\; g_E^{\star} ,
+  \label{eq:relative-excess}
+\end{equation}
+
+so $g_E^{\star}$ is exactly the quantity a reader takes it for: the descent
+schedule's position error is at most $g_E^{\star}$ above the best any schedule
+of this class achieves. The complementary form
+$1-\sqrt{L_{\mathrm{FW}}/J_{\mathrm{desc}}}$ measures the same bound against
+$E_{\mathrm{desc}}$ instead, and reads about a tenth smaller near the values of
+interest --- $0.10$ there is $0.111$ here --- which is enough to matter in a
+statement whose whole content is a bound.
+
+Both are reported for every orbit and neither carries a threshold; what the
+naming rule is bound to is the exhaustive panel of
 Section~\ref{sec:algorithm-exhaustive}.
 
 Two degenerate cases are handled by rule rather than by judgement. The
@@ -306,20 +389,23 @@ against the true optimum rather than against a bound. Over the panel of
 \ph{n} such instances the descent returned the exact optimum in \ph{n} of
 them, with a worst-case ratio of \ph{value}.
 
-This establishes optimality \emph{for the instances enumerated}. It says
-nothing about $K_{\mathrm{dec}}=\ph{n}$ beyond the ordinary inductive weight of
-a solver that has not been caught suboptimal where it could be checked, and we
-do not ask it to. The naming rule is bound to this panel: the quantity is
-called an \emph{oracle} only if the descent is exactly optimal throughout it;
-otherwise it is reported as a \emph{linearized trajectory-aware allocation
-benchmark} and every ratio taken against it is read as conservative, in the
-same sense the previous paper's force-level Lagrangian benchmark was.
+This establishes optimality \emph{for the instances enumerated}, and nothing
+more. It says nothing about $K_{\mathrm{dec}}=\ph{n}$ beyond the ordinary
+inductive weight of a solver that has not been caught suboptimal where it could
+be checked --- and on unstructured random instances of the same size it
+\emph{is} caught, landing \ph{pct} above the enumerated optimum in the worst
+case. Both facts are reported.
 
-\dnote{One of the two names has to be chosen once
-Table~\ref{tab:exhaustive} exists, and the choice is bound to the panel rather
-than to the result. If the descent is ever caught suboptimal, delete the word
-``oracle'' from the whole manuscript --- including the abstract --- rather than
-qualifying it in place.}
+We therefore do not call the full-scale quantity an oracle. It is the
+\Asign\ \emph{trajectory-aware attainability benchmark}: a schedule that is
+attainable under the stated information and budget, whose distance from the
+constrained optimum is measured where measurement is possible and bounded, when
+the bound is informative, by
+Section~\ref{sec:algorithm-certificate}. Ratios taken against it are read as
+conservative, in the same sense the previous paper's force-level Lagrangian
+benchmark was. Where the word \emph{oracle} appears it refers to information
+access --- an \emph{oracle-information} schedule, one allowed to read the
+reference field --- and never to optimality.
 
 \begin{table}[!htbp]
   \centering\small

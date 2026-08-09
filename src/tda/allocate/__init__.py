@@ -55,6 +55,7 @@ from tda.allocate.frankwolfe import (
     linear_minimisation,
     objective_coefficients,
 )
+from tda.allocate.polish import PolishReport, block_deltas, polish_to_budget
 from tda.allocate.rounding import (
     argmax_rounding,
     round_and_polish,
@@ -70,9 +71,11 @@ from tda.allocate.separable import (
 __all__ = [
     "Certificate",
     "DescentProblem",
+    "PolishReport",
     "ScheduleSolution",
     "VerificationRecord",
     "argmax_rounding",
+    "block_deltas",
     "certify",
     "expand_to_cells",
     "force_values",
@@ -81,6 +84,7 @@ __all__ = [
     "monotonicity_report",
     "objective_coefficients",
     "panel_summary",
+    "polish_to_budget",
     "round_and_polish",
     "schedule_count",
     "schedule_work",

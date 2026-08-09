@@ -3,23 +3,49 @@
 One place, because getting it wrong in one solver and right in another would
 make their comparison meaningless.
 
-The constraint is a **ceiling**, :math:`\\sum_qW_qN_q^2\\le B`, and the
-Karush--Kuhn--Tucker conditions for it are :math:`\\lambda\\ge0`,
-:math:`B-W\\ge0` and :math:`\\lambda(B-W)=0`.  A solution that leaves work
-unspent is admissible whenever :math:`\\lambda^\\star=0`, and that is not a
-corner case here: the objective is not monotone in degree, because the whole
-content of the signed formulation is that contributions cancel, so raising a
-degree can shrink one term of a cancelling pair and *increase* :math:`J`.
-:func:`solve_to_budget` therefore tests :math:`\\lambda=0` before it brackets
-anything (``DECISIONS.md`` D142).
+The constraint is a **ceiling**, :math:`\\sum_qW_qN_q^2\\le B`, and a solution
+that leaves work unspent is admissible.  That is not a corner case here: the
+objective is not monotone in degree, because the whole content of the signed
+formulation is that contributions cancel, so raising a degree can shrink one
+term of a cancelling pair and *increase* :math:`J` (``DECISIONS.md`` D142).
 
-Selection among several starts is on the *penalized* objective
-:math:`F_\\lambda=J+\\lambda W`, never on :math:`J` alone.  At a fixed
-multiplier different starts land in basins that do not spend the same work, so
-selecting on :math:`J` would prefer whichever basin bought a lower objective
-by spending more --- which is not the solution of the Lagrangian subproblem,
-and leaves the attained work free to rise with :math:`\\lambda` for reasons
-that have nothing to do with the problem (D131).
+The multiplier is a search device, not an optimality condition
+--------------------------------------------------------------
+The degrees are integers, so this is an integer program and the
+Karush--Kuhn--Tucker conditions are **not** necessary for its optimum.
+Complementary slackness in particular fails outright.  Take two candidates
+with :math:`(W,J)` of :math:`(5,1)` and :math:`(10,0)` under :math:`B=6`: the
+constrained optimum is the first, at :math:`J^\\star=1`, leaving a unit of
+budget unspent, and no multiplier makes :math:`\\lambda(B-W^\\star)` vanish.
+Stopping a sweep on :math:`\\lambda(B-W)<\\epsilon` would reject the right
+answer (D182).
+
+The deeper limit is the same one [Shoham1988]_ describes for separable
+allocation: minimising :math:`J+\\lambda W` is a weighted-sum scalarisation,
+and over a discrete set that recovers only the *supported* efficient points.
+A constrained optimum sitting in a non-convex notch of the trade-off curve is
+unreachable from any :math:`\\lambda`.
+
+So :func:`solve_to_budget` is a **Lagrangian continuation**: it sweeps the
+multiplier to generate good feasible candidates cheaply, and returns the one
+with the smallest objective among *every* feasible schedule the sweep
+produced.  It is not claimed to be optimal.  What establishes how close it
+gets is :func:`tda.allocate.exhaustive.verify_schedule`, which enumerates
+where enumeration is affordable, and the hard-budget polish that each solver
+applies to the continuation's answer.
+
+Keeping the best rather than the last is not a refinement.  A sweep that
+returns whichever schedule the final bracket happened to land on can return a
+*worse* schedule when given more starting points --- measured on a pilot arc,
+where a four-start descent came back above a single-start one because the two
+bisections stopped at different multipliers.
+
+Selection among several starts *at a fixed multiplier* is on the penalized
+objective :math:`F_\\lambda=J+\\lambda W`, never on :math:`J` alone: that is
+the Lagrangian subproblem and solving it on :math:`J` would prefer whichever
+basin bought a lower objective by spending more (D131).  Selection *across*
+multipliers is on :math:`J` among the feasible, which is a different question
+-- which feasible point is best -- and has a different answer.
 
 References
 ----------
@@ -92,10 +118,12 @@ class ScheduleSolution:
     budget:
         The ceiling.
     multiplier:
-        :math:`\\lambda^\\star`.  Exactly zero means the ceiling did not bind
-        and the schedule is the unconstrained optimum of its own criterion --
-        a legitimate outcome, and one the campaign reports rather than
-        calibrates away.
+        The multiplier whose subproblem produced the returned schedule.  Not
+        :math:`\\lambda^\\star` and not an optimality certificate --- the
+        problem is integer and has no such multiplier in general (D182) ---
+        but a record of where in the continuation the winner was found.
+        Exactly zero means the unconstrained answer already fitted, which is a
+        legitimate outcome the campaign reports rather than calibrates away.
     feasible:
         Whether the work fits.  Always true on return; carried so that a
         serialized record answers the question without recomputing.
@@ -164,11 +192,17 @@ def solve_to_budget(
 
     Notes
     -----
-    The bisection tracks the best *feasible* iterate rather than converging on
-    a root.  Over a discrete degree set the attained work is a step function
-    of the multiplier and the root need not exist; chasing one is how a
-    calibration loop silently returns an infeasible schedule
+    The bisection is a search accelerator and nothing more.  It narrows the
+    bracket so that few subproblems are solved; the answer is the best
+    feasible schedule *seen anywhere*, and it does not have to have come from
+    the last bracket.  Over a discrete degree set the attained work is a step
+    function of the multiplier and no root need exist; converging on one is
+    how a calibration loop silently returns an infeasible schedule
     [Shoham1988]_.
+
+    There is no complementary-slackness stopping test, and there must not be:
+    the problem is integer, and its optimum can leave budget unspent at every
+    positive multiplier (D182).
 
     Monotonicity of the attained work in :math:`\\lambda` is a property of a
     *global* minimizer [Everett1963]_.  A separable solve has one; a
@@ -179,22 +213,39 @@ def solve_to_budget(
         raise ValueError(f"budget must be positive, got {budget}")
     time_weight = np.asarray(time_weight, dtype=float)
 
+    # Every feasible schedule the continuation produces is a candidate; the
+    # smallest objective among them wins, whichever multiplier found it.
+    best: tuple[IntArr, float, float, float] | None = None
+    seen = 0.0
+
+    def offer(schedule: IntArr, value: float, multiplier: float) -> float:
+        """Record a schedule if it fits, and keep it if it is the best so far."""
+        nonlocal best, seen
+        work = schedule_work(schedule, time_weight)
+        if work > budget:
+            return work
+        seen += 1.0
+        if best is None or value < best[1]:
+            best = (schedule, value, work, multiplier)
+        return work
+
     degrees, objective = solve_at(0.0)
-    work = schedule_work(degrees, time_weight)
-    if work <= budget:
+    if offer(degrees, objective, 0.0) <= budget:
+        # The unconstrained answer already fits, and nothing a positive
+        # multiplier returns can beat it: the penalty only ever moves the
+        # subproblem away from the objective's own minimiser.
+        schedule, value, work, _ = best
         return ScheduleSolution(
-            degrees=degrees, objective=objective, work=work, budget=budget,
+            degrees=schedule, objective=value, work=work, budget=budget,
             multiplier=0.0, feasible=True,
-            diagnostics={"bracket_doublings": 0.0, "ceiling_binds": 0.0},
+            diagnostics={"bracket_doublings": 0.0, "ceiling_binds": 0.0,
+                         "feasible_seen": seen},
         )
 
     lo, hi, doublings = 0.0, 1.0, 0.0
-    best: tuple[IntArr, float, float] | None = None
     while hi <= max_multiplier:
         trial, value = solve_at(hi)
-        trial_work = schedule_work(trial, time_weight)
-        if trial_work <= budget:
-            best = (trial, value, trial_work)
+        if offer(trial, value, hi) <= budget:
             break
         lo, hi, doublings = hi, hi * 2.0, doublings + 1.0
     if best is None:
@@ -203,19 +254,18 @@ def solve_to_budget(
             f"{budget:.6g}; the smallest schedule available costs "
             f"{schedule_work(solve_at(max_multiplier)[0], time_weight):.6g}")
 
-    best_multiplier = hi
     for _ in range(BUDGET_BISECTION_STEPS):
         mid = 0.5 * (lo + hi)
         trial, value = solve_at(mid)
-        trial_work = schedule_work(trial, time_weight)
-        if trial_work <= budget:
-            best, best_multiplier, hi = (trial, value, trial_work), mid, mid
+        if offer(trial, value, mid) <= budget:
+            hi = mid
         else:
             lo = mid
 
-    degrees, objective, work = best
+    degrees, objective, work, multiplier = best
     return ScheduleSolution(
         degrees=degrees, objective=objective, work=work, budget=budget,
-        multiplier=best_multiplier, feasible=True,
-        diagnostics={"bracket_doublings": doublings, "ceiling_binds": 1.0},
+        multiplier=multiplier, feasible=True,
+        diagnostics={"bracket_doublings": doublings, "ceiling_binds": 1.0,
+                     "feasible_seen": seen},
     )

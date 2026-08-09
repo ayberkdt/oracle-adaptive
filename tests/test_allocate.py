@@ -533,13 +533,14 @@ def test_selection_among_starts_uses_the_penalized_objective(problem) -> None:
     """Selection must be on the penalized objective, which is the D131 failure.
 
     At a fixed multiplier, choosing on ``J`` alone prefers whichever basin
-    bought a lower objective by spending more.  Checked at the level that
-    matters: the returned schedule must minimise ``J + lambda W`` among the
-    starts, not ``J``.
+    bought a lower objective by spending more. Checked on the continuation's
+    own answer -- ``polish=False`` -- because that is the level the property
+    belongs to: the polish that follows deliberately leaves the Lagrangian
+    subproblem behind and searches under the ceiling instead.
     """
     budget = _mid_budget(problem)
     starts = [np.full(INTERVALS, d) for d in DEGREES]
-    result = solve_descent(problem, budget, starts)
+    result = solve_descent(problem, budget, starts, polish=False)
     chosen = result.objective + result.multiplier * result.work
     for start in starts:
         value = problem.kernel.objective(problem.gather(start))
