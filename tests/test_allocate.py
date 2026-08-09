@@ -175,10 +175,49 @@ def test_away_steps_close_the_relaxation_and_classical_steps_do_not(
     plain = certify(problem, optimum, budget, iterations=2000,
                     away_steps=False)
 
-    assert away.relaxed_gap == pytest.approx(0.0, abs=1e-9)
-    assert away.lower_bound == pytest.approx(away.relaxed_objective, rel=1e-9)
+    # Converged to the requested tolerance, which is relative to the scale
+    # being certified rather than absolute.
+    assert away.relaxed_gap <= 1e-9 * optimum
+    assert away.lower_bound == pytest.approx(away.relaxed_objective, rel=1e-8)
     assert plain.relaxed_gap > 1e-6
     assert away.lower_bound >= plain.lower_bound
+
+
+def test_an_emptied_vertex_does_not_end_the_iteration(problem) -> None:
+    """The away step must not be offered a vertex carrying no weight.
+
+    A full Frank--Wolfe step leaves every previous atom at zero weight. If the
+    away search then picks one, its ceiling is zero, the step is zero, and the
+    loop reads that as convergence -- producing a certificate that looks
+    settled after three steps and is worth nothing. It stops early on real
+    data and not on the random fixture, so the property is asserted directly
+    rather than left to whichever instance happens to trigger it.
+    """
+    budget = _mid_budget(problem)
+    optimum, _ = _exhaustive(problem, budget)
+    for iterations in (50, 200, 800):
+        result = certify(problem, optimum, budget, iterations=iterations)
+        # Either it used the steps it was given, or it stopped because the
+        # relaxation was solved -- never because it ran out of directions.
+        settled = result.relaxed_gap <= 1e-9 * optimum
+        assert result.iterations == iterations or settled
+        assert result.active_atoms >= 1
+
+
+def test_a_solved_relaxation_stops_instead_of_spending_its_budget(
+        problem) -> None:
+    """Once the gap is zero no further step can raise the bound.
+
+    Worth stopping on rather than iterating through: the campaign certifies
+    one orbit after another, and iterations spent after convergence are
+    iterations the next orbit does not get.
+    """
+    budget = _mid_budget(problem)
+    optimum, _ = _exhaustive(problem, budget)
+    generous = certify(problem, optimum, budget, iterations=5000)
+    exact = certify(problem, optimum, budget, iterations=800)
+    assert generous.iterations < 5000
+    assert generous.lower_bound == pytest.approx(exact.lower_bound, rel=1e-9)
 
 
 def test_the_bound_is_a_maximum_over_a_sequence_that_is_not_monotone(
@@ -214,7 +253,7 @@ def test_a_solved_relaxation_still_leaves_an_integrality_gap(problem) -> None:
     budget = _mid_budget(problem)
     optimum, _ = _exhaustive(problem, budget)
     solved = certify(problem, optimum, budget, iterations=800)
-    assert solved.relaxed_gap == pytest.approx(0.0, abs=1e-9)
+    assert solved.relaxed_gap <= 1e-9 * optimum
     assert solved.lower_bound < optimum
     # The best gap this relaxation can ever certify on this instance.
     assert solved.gap_error == pytest.approx(

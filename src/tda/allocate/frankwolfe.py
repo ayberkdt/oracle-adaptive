@@ -105,6 +105,9 @@ __all__ = ["Certificate", "certify", "linear_minimisation"]
 
 Arr = NDArray[np.float64]
 
+_WEIGHT_FLOOR = 1.0e-12
+"""Below this an active vertex is treated as gone rather than as tiny."""
+
 
 @dataclass(frozen=True, slots=True)
 class Certificate:
@@ -271,7 +274,8 @@ def _contract(problem: DescentProblem, theta: Arr) -> Arr:
 
 
 def certify(problem: DescentProblem, descent_objective: float, budget: float,
-            iterations: int = 60, away_steps: bool = True) -> Certificate:
+            iterations: int = 60, away_steps: bool = True,
+            tolerance: float = 1.0e-9) -> Certificate:
     """Run Frank--Wolfe on the relaxation and return the certified gap.
 
     Parameters
@@ -289,6 +293,12 @@ def certify(problem: DescentProblem, descent_objective: float, budget: float,
         Whether to allow away steps.  ``False`` is classical Frank--Wolfe and
         is retained as the control: the two produce the same *kind* of bound,
         so comparing them measures the solver and nothing else.
+    tolerance:
+        Stop once the relaxation's own duality gap falls below this fraction
+        of the scale being certified.  With away steps the gap reaches zero
+        rather than merely shrinking, and once it does no further step can
+        raise the bound; continuing would only spend the iteration budget of
+        the next orbit.
 
     Returns
     -------
@@ -351,19 +361,26 @@ def certify(problem: DescentProblem, descent_objective: float, budget: float,
         forward = u_s - u
         forward_gain = -float(np.sum(gradient * forward))
         relaxed_gap = max(forward_gain, 0.0)
-        best_bound = max(best_bound,
-                         kernel.objective(u) + float(np.sum(gradient
-                                                            * forward)))
+        current = kernel.objective(u)
+        best_bound = max(best_bound, current - forward_gain)
+        if relaxed_gap <= tolerance * max(abs(descent_objective), current):
+            break                      # the relaxation is solved
 
         direction, ceiling, is_away, worst = forward, 1.0, False, -1
         if away_steps and len(atoms) > 1:
             flat = coefficients.ravel()
             scores = np.array([float(atom.dot(flat)[0]) for atom in atoms])
             worst = int(np.argmax(scores))
+            alpha = float(weights[worst])
             u_away = contract_atom(atoms[worst])
             candidate = u - u_away
-            if -float(np.sum(gradient * candidate)) > forward_gain:
-                alpha = float(weights[worst])
+            # A vertex carrying no weight cannot be moved away from: its
+            # ceiling is zero, the step is zero, and the iteration reads that
+            # as convergence and stops. Guarded here as well as by pruning,
+            # because "the step was zero" and "there is nowhere to go" have
+            # to stay different statements.
+            if (alpha > _WEIGHT_FLOOR
+                    and -float(np.sum(gradient * candidate)) > forward_gain):
                 direction, is_away = candidate, True
                 ceiling = (np.inf if alpha >= 1.0
                            else alpha / (1.0 - alpha))
@@ -381,17 +398,25 @@ def certify(problem: DescentProblem, descent_objective: float, budget: float,
             away_taken += 1
             weights = weights * (1.0 + step)
             weights[worst] -= step
-            if weights[worst] <= 1.0e-12:
+            if weights[worst] <= _WEIGHT_FLOOR:
                 drops += 1
-                keep = [i for i in range(len(atoms)) if i != worst]
-                atoms = [atoms[i] for i in keep]
-                weights = weights[keep]
         else:
             weights = weights * (1.0 - step)
             atoms.append(as_atom(s))
             weights = np.append(weights, step)
         weights = np.clip(weights, 0.0, None)
         weights /= weights.sum()
+
+        # Prune emptied vertices. A full Frank--Wolfe step leaves every
+        # previous atom at zero weight, and an away search that then picks one
+        # of them gets a zero ceiling and terminates the iteration three steps
+        # in --- which is how this looked the first time: a converged-looking
+        # certificate that had barely started.
+        if float(weights.min()) <= _WEIGHT_FLOOR:
+            keep = np.flatnonzero(weights > _WEIGHT_FLOOR)
+            atoms = [atoms[i] for i in keep]
+            weights = weights[keep]
+            weights /= weights.sum()
 
     lower = max(best_bound, 0.0)
     vacuous = lower <= 0.0
