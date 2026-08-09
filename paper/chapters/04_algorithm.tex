@@ -40,8 +40,11 @@ and a sensitivity-weighted allocation.
 \Require tabulated $\mathbf u_i(N)$ for $i=1..M$, $N\in\mathcal{N}$; suffix
   blocks $\mathbf A_i$; grouping $g$; budget $B$; start set $\mathcal{S}$
   (Table~\ref{tab:starts})
-\State $\lambda \gets 0$ \Comment{the ceiling may not bind; test that first}
-\Repeat \Comment{outer: complementary slackness on the budget}
+\State solve at $\lambda=0$; \textbf{if} $W(N^\star)\le B$ \textbf{return}
+  \Comment{$\lambda^\star=0$: the ceiling does not bind}
+\State $\lambda_{\mathrm{hi}} \gets$ the separable solution's multiplier;
+  double it until $W\le B$ \Comment{bracket $[0,\lambda_{\mathrm{hi}}]$}
+\Repeat \Comment{outer: bisection inside the bracket}
   \For{each start $s\in\mathcal{S}$} \Comment{multi-start, \emph{not} one start}
     \State $N \gets s$
     \Repeat \Comment{inner: sweeps}
@@ -57,10 +60,8 @@ and a sensitivity-weighted allocation.
   \EndFor
   \State $N^\star(\lambda) \gets \argmin_s F_\lambda^{(s)}$
     \Comment{by the \emph{penalized} objective, not by $J$}
-  \If{$\lambda=0$ \textbf{and} $W(N^\star)\le B$}
-    \State \textbf{stop} \Comment{$\lambda^\star=0$; the ceiling does not bind}
-  \EndIf
-  \State $\lambda \gets$ bisect on $W(N^\star)-B$
+  \State $\lambda \gets$ bisect on $W(N^\star)-B$ within
+    $[0,\lambda_{\mathrm{hi}}]$
 \Until{$W(N^\star)\le B$ and $\lambda\,(B-W(N^\star))<\ph{value}$}
 \State \Return $N^\star$, $J(N^\star)$, and the spread of $J$ across
   $\mathcal{S}$

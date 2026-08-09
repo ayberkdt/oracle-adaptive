@@ -394,7 +394,7 @@ Sütunlar: **Soru** (ne cevaplıyor) · **Girdi** · **Çıktı** · **Maliyet**
   yerde dereceyi referansa itip defekti tanım gereği sıfırlamaya *teşviklidir*;
   sabit politikanın böyle bir teşviki yok. Her `A-sign` çizelgesi için tavan
   teması kesri raporlanır, yüksek temaslı yörüngeler orandan çıkarılır.
-- **Eşleştirme (D91):** `B2 + B+ = B_tot`; çapa `F-op(β)`'nın gerçekleşen işi,
+- **Eşleştirme (D91, D142):** `B2 + B+ ≤ B_tot` — **tavan**; çapa `F-op(β)`'nın gerçekleşen işi,
   adaylar ona %2 bandında kalibre edilir. Sabit komparatöre
   hayali ek yük eklenmez
 - 14 yörüngelik ölçülen seri çekirdek zamanı paneli, 3 tekrar, 0.90–1.10 bandı

@@ -80,6 +80,12 @@ STALE = [
     (r"B2,C \+ B\+ = B_tot = B2,F",
      "eslestirme: capa + aday kalibrasyonu", "D91",
      r"D23|D91"),
+    # D142: butce bir TAVAN. Esitlik yazmak hem A-sign'i kotulestirir hem FW
+    # sertifikasini gecersiz kilar; J derecede monoton degil.
+    (r"B2 ?\+ ?B\+ ?= ?B_tot|B_2 ?\+ ?B_\+ ?" + re.escape(BS) + r";=" +
+     re.escape(BS) + r"; ?B_\{" + re.escape(BS) + r"mathrm\{tot\}\}",
+     "butce bir tavan; = degil <= olmali", "D142",
+     r"D107|D142|tavan|ceiling|boyutsal|dimension"),
     (r"M7'de değil|M7.de degil",
      "asama numaralari kaydi", "D42",
      r"D8 "),

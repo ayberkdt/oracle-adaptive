@@ -5,7 +5,7 @@
 Semboller [NOTATION.md](NOTATION.md)'de. Kısaca:
 
 - **ρ(komparatör, aday) = E_komparatör / E_aday**, eşleştirme
-  `B2 + B+ = B_tot` altında; `B_tot` = `F-op(β)`'nın gerçekleşen işi ve
+  ortak tavan `B2 + B+ ≤ B_tot` altında (D142); `B_tot` = `F-op(β)`'nın gerçekleşen işi ve
   **adaylar ona kalibre edilir**, komparatör kaymaz (D91). Yörünge başına oranların
   **medyanı**; `ρ > 1` aday lehine.
 - **`ρ̂` ve `ρ` ayrıdır:** `ρ̂` öngörülen hatadan (`Ê = √J`, M1–M2, propagasyon

@@ -183,7 +183,7 @@ def test_nodes_are_the_cell_midpoints() -> None:
     assert np.all(grid.nodes < grid.edges[1:])
 
 
-def test_step_bounds_hold_to_the_integer_rounding() -> None:
+def test_step_bounds_follow_from_the_density_clamp() -> None:
     """Clipping the cell count carries the bounds into the widths -- inexactly.
 
     An interval demanding ``S`` cells is given ``round(S)``, so the widths are
@@ -372,7 +372,9 @@ def test_density_mass_totals_the_integrated_density() -> None:
     t, r, v = _eccentric_sample()
     density = np.clip(cfg.samples_per_tau / correlation_time(r, v, 300),
                       1.0 / cfg.dt_acc_max_s, 1.0 / cfg.dt_acc_min_s)
-    total = np.trapezoid(density, t)
-    # Per-interval rounding moves the total by at most half a cell per
-    # interval, so the tolerance is the interval count and not a fixed number.
-    assert abs(grid.density_mass.sum() - total) < 0.5 * DURATION / cfg.dt_dec_s
+    total = float(np.trapezoid(density, t))
+    # Not a rounding tolerance: an interval's shares are ``demand/count``
+    # repeated ``count`` times, so they sum to the demand exactly and the
+    # totals agree to interpolation error.  A loose bound here would let a
+    # genuinely wrong split pass.
+    assert grid.density_mass.sum() == pytest.approx(total, rel=1e-9)

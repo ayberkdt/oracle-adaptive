@@ -88,15 +88,17 @@ tek sayıda toplar — yapılmaz.
 
 ### Eşleştirme sözleşmesi — çapa, kim ayarlanır, tolerans (D91)
 
-Karşılaştırmalar **toplam bütçe** `B_tot` üzerinde eşleştirilir:
+Karşılaştırmalar ortak bir **iş tavanı** `B_tot` üzerinde eşleştirilir:
 
 ```
-her aday:           B2 + B+  =  B_tot        (B+ yalnız C-* için, diğerlerinde 0)
-sabit komparatör:   B2,F     =  B_tot
+her aday:           B2 + B+  ≤  B_tot        (B+ yalnız C-* için, diğerlerinde 0)
+sabit komparatör:   B2,F     =  B_tot        (çapayı o tanımlıyor)
 ```
 
 Denetleyici, kendi ek yükü yüzünden gravite değerlendirmesine **daha az** bütçe
 bırakır. Sabit komparatöre hayali bir `B+` **eklenmez**.
+
+**Tavan, hedef değil (D142).** Eşitlik değil `≤`: `J` derecede monoton olmadığı için optimum bütçeyi tam harcamayabilir ve harcamaya zorlamak hem `A-sign`'ı kötüleştirir hem FW sertifikasını geçersiz kılar. Her politikanın **gerçekleşen** `B2+B+`'ı hatasının yanında raporlanır; az harcayıp kazanan daha çok kazanmıştır.
 
 **Çapa (anchor).** `B_tot` her yörünge ve her `β` için **önceden ilan edilmiş
 bir sayıdır**: `F-op(β)`'nın o yayda **gerçekleşen** toplam kuadratik işi.
@@ -120,7 +122,9 @@ kalibre edilir**.
 %29'luk sızıntı tam olarak budur). Dolayısıyla her aday için:
 
 ```
-propagate → B2 (+B+) ölç → λ'yı ayarla → tekrarla,  |B2+B+ − B_tot|/B_tot ≤ %2 olana dek
+propagate → B2 (+B+) ölç → λ'yı ayarla → tekrarla, ŞU ikisinden biri olana dek:
+  (a) B2+B+ ≤ B_tot ve (B_tot − B2 − B+)/B_tot ≤ %2
+  (b) çizelge kendi ölçütünün kısıtsız optimumu (λ*=0) — fazla iş almaya zorlanmaz
 ```
 
 Tipik olarak aday başına **2–3 propagasyon**. Bu, M3 ve sonrasının yay

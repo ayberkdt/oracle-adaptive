@@ -172,10 +172,65 @@ def _first_int(text: str, pattern: str) -> int | None:
     m = re.search(pattern, text)
     return int(m.group(1)) if m else None
 
+SEP_ROW = re.compile(r"^\|[-: |]+\|$")
+
+
+def _cells(line: str) -> int:
+    """Count pipes that actually split a cell, i.e. unescaped ones."""
+    out, prev = 0, ""
+    for ch in line:
+        if ch == "|" and prev != "\\":
+            out += 1
+        prev = ch
+    return out
+
+
+def check_table_shapes() -> int:
+    """Compare every markdown table row with its header column count.
+
+    A pipe inside an inline code span still splits a cell in GitHub-flavoured
+    markdown, so a cell containing a backticked expression with a pipe in it
+    silently gains columns and the row renders broken.  Six rows of the
+    decision log were wrong this way, three of them written in the same round
+    that added this check.  Nothing else notices: the file is valid markdown,
+    it just renders as a different table than the one written.
+
+    Returns
+    -------
+    int
+        Number of rows whose column count differs from their header's.
+    """
+    bad = 0
+    for name in sorted(glob.glob("*.md")):
+        rows = pathlib.Path(name).read_text(encoding="utf-8").splitlines()
+        i = 0
+        while i < len(rows):
+            if SEP_ROW.match(rows[i].strip()) and i > 0:
+                want = _cells(rows[i])
+                if _cells(rows[i - 1]) != want:
+                    bad += 1
+                    print(f"!! {name}:{i}: baslik {_cells(rows[i - 1])} "
+                          f"hucre, ayirici {want}")
+                j = i + 1
+                while j < len(rows) and rows[j].strip().startswith("|"):
+                    if _cells(rows[j]) != want:
+                        bad += 1
+                        print(f"!! {name}:{j + 1}: {_cells(rows[j])} hucre, "
+                              f"beklenen {want} "
+                              "(kod icinde kacissiz boru var mi?)")
+                    j += 1
+                i = j
+            else:
+                i += 1
+    if not bad:
+        print("OK tablo bicimi: butun satirlar basligiyla uyumlu")
+    return bad
+
 
 def main() -> int:
     """Run every check and report the number of inconsistencies."""
-    bad = check_register_ranges() + check_derived_claims()
+    bad = (check_register_ranges() + check_derived_claims()
+           + check_table_shapes())
     for name, (pat, want) in PROBES.items():
         hits = collections.defaultdict(list)
         for f in FILES:

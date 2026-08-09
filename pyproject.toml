@@ -7,7 +7,9 @@ name = "tda"
 version = "0.1.0"
 description = "Trajectory-aware truncation-degree allocation for lunar gravity propagation"
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.24", "scipy>=1.10"]
+# numpy 2.0 for np.trapezoid, which the grid tests use; 1.x would fail
+# at import in a clean-room install at the declared floor.
+dependencies = ["numpy>=2.0", "scipy>=1.13"]
 
 # The package is deliberately NOT named after the word "oracle". Whether the
 # benchmark earns that name is bound to a certified gap threshold that will not

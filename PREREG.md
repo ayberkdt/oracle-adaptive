@@ -237,7 +237,7 @@ kullanılan yay kayıtta böyle işaretlenir.
 
 ### Bütçe eşleştirme sözleşmesi (NOTATION §2, D91)
 ```
-her aday:  B2 + B+ = B_tot ,   B_tot := F-op(β)'nın GERÇEKLEŞEN işi
+her aday:  B2 + B+ ≤ B_tot ,   B_tot := F-op(β)'nın GERÇEKLEŞEN işi   (tavan, D142)
 ```
 - **Çapa önceden ilan edilir:** β=1'de arşivlenmiş kritik-derece koşusu.
 - **Komparatör sabit, adaylar kalibre edilir.** Tersi (`f`'in payı ve paydası
